@@ -31,7 +31,7 @@ function EyeIcon({ size = 18 }) {
   )
 }
 
-export function SignUp({ open, onClose }) {
+export function SignUp({ open, onClose, onSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -55,6 +55,8 @@ export function SignUp({ open, onClose }) {
           className="signup-form"
           onSubmit={(e) => {
             e.preventDefault()
+            if (onSuccess) onSuccess()
+            if (onClose) onClose()
           }}
         >
           <label className="signup-label">
@@ -140,7 +142,7 @@ export function SignUp({ open, onClose }) {
   )
 }
 
-export function Login({ open, onClose, onOpenSignUp }) {
+export function Login({ open, onClose, onOpenSignUp, onSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
 
   if (!open) return null
@@ -163,6 +165,8 @@ export function Login({ open, onClose, onOpenSignUp }) {
           className="login-form"
           onSubmit={(e) => {
             e.preventDefault()
+            if (onSuccess) onSuccess()
+            if (onClose) onClose()
           }}
         >
           <label className="login-label">

@@ -1,0 +1,33 @@
+/* Simple toast notification */
+.toast-wrap {
+  position: fixed;
+  right: min(24px, 4vw);
+  top: 20px;
+  z-index: 2000;
+}
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(10, 30, 40, 0.9);
+  color: #e6f2f8;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+.toast-success {
+  border-color: rgba(46, 204, 113, 0.5);
+}
+.toast-icon {
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  color: #8ff0b2;
+  font-size: 14px;
+}
+.toast-msg { font-size: 14px; }
+.toast-close {
+  border: none; background: transparent; color: #cfe5ee; font-size: 18px;
+  margin-left: 6px;
+}
+
