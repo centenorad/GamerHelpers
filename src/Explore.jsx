@@ -3,11 +3,11 @@ import brandLogo from './assets/logo.png'
 import { GAMES } from './games'
 import userAvatar from './assets/chesterpogi.jpg'
 import { useState, useEffect } from 'react'
-import avatarBading from './assets/bading.jpg'
-import avatarBengkong from './assets/bengkong.jpg'
-import avatarGandara from './assets/gandara.jpg'
-import avatarMrSuave from './assets/mrsuave.jpg'
-import avatarStrongman from './assets/strongman.png'
+import avatarBading from './assets/maokai.jpg'
+import avatarBengkong from './assets/daeny.jpg'
+import avatarGandara from './assets/faker.jpg'
+import avatarMrSuave from './assets/sonic.jpg'
+import avatarStrongman from './assets/raz.jpg'
 
 function Explore({ onLogout, onNavigateHome, onOpenGame, onOpenProfile, onOpenUser, onOpenChat, recentVisits = [] }) {
   const [avatarSrc, setAvatarSrc] = useState(() => {

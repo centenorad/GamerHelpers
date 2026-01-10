@@ -1,9 +1,9 @@
 import './Dashboard.css'
 import brandLogo from './assets/logo.png'
-import userAvatar from './assets/chesterpogi.jpg'
+import userAvatar from './assets/kkoma_coach.jpeg'
 import { GAMES } from './games'
-import tempImage from './assets/strongman.png'
-import tempImage2 from './assets/valorant.png'
+import tempImage from './assets/t1_champ.jpg'
+import tempImage2 from './assets/t1_logo.jpg'
 import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
@@ -165,7 +165,7 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
               <div className="post-header">
                 <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
                 <div className="post-meta">
-                  <div className="post-author">Chester Bryan Torres</div>
+                  <div className="post-author">Ishaan Yash Satsatin</div>
                   <div className="post-sub">posted just now</div>
                 </div>
                 <button className="post-close" aria-label="Close">×</button>
@@ -194,7 +194,7 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
             <div className="post-header">
               <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
               <div className="post-meta">
-                <div className="post-author">Chester Bryan Torres</div>
+                <div className="post-author">Ishaan Yash Satsatin</div>
                 <div className="post-sub">has a piloting service for Valorant</div>
               </div>
               <button className="post-close" aria-label="Close">×</button>
@@ -225,15 +225,15 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
             <div className="post-header">
               <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
               <div className="post-meta">
-                <div className="post-author">Chester Bryan Torres</div>
+                <div className="post-author">Ishaan Yash Satsatin</div>
                 <div className="post-sub">has a coaching service for Genshin Impact</div>
               </div>
               <button className="post-close" aria-label="Close">×</button>
             </div>
-            <div className="post-title">PUKELOVETITE</div>
+            <div className="post-title">Everyone, the reigning champs!</div>
             <div className="post-body">
               <p>
-                TIETITEIEITEITEITEITEITIETIEITEITIETIEITIETIEITITEITEITEITEITIETIEITEITIE
+                LETS GO T1!!
               </p>
             </div>
             <div

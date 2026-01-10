@@ -1,9 +1,9 @@
 import './Dashboard.css'
 import brandLogo from './assets/logo.png'
 import { GAMES } from './games'
-import userAvatar from './assets/chesterpogi.jpg'
-import tempImage from './assets/strongman.png'
-import tempImage2 from './assets/valorant.png'
+import userAvatar from './assets/kkoma_coach.jpeg'
+import tempImage from './assets/t1_champ.jpg'
+import tempImage2 from './assets/t1_logo.jpg'
 import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
@@ -13,7 +13,7 @@ function Profile({
   onNavigateExplore,
   recentVisits = [],
   variant = 'self',
-  user = { name: 'Chester Bryan Torres', handle: '@chester123' },
+  user = { name: 'Ishaan Yash Satsatin', handle: '@isshaan123' },
   onOpenChat,
 }) {
   /* ---------------- LIGHTBOX STATE (FIX) ---------------- */
@@ -187,7 +187,7 @@ function Profile({
                 <img src={profile.avatar || userAvatar} alt="" className="avatar-img" />
               </div>
               <div className="post-meta">
-                <div className="post-author">Chester Bryan Torres</div>
+                <div className="post-author">Ishaan Yash Satsatin</div>
                 <div className="post-sub">has a coaching service for Genshin Impact</div>
               </div>
             </div>
