@@ -3,6 +3,7 @@ import brandLogo from './assets/logo.png'
 import userAvatar from './assets/chesterpogi.jpg'
 import { GAMES } from './games'
 import tempImage from './assets/strongman.png'
+import tempImage2 from './assets/valorant.png'
 import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
@@ -37,6 +38,22 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
   )
 
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImages, setLightboxImages] = useState([])
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+
+  const openLightbox = (images, index = 0) => {
+    setLightboxImages(images)
+    setLightboxIndex(index)
+    setLightboxOpen(true)
+  }
+
+  const closeLightbox = () => {
+    setLightboxOpen(false)
+    setLightboxImages([])
+    setLightboxIndex(0)
+  }
+
   const [avatarSrc, setAvatarSrc] = useState(() => {
     try {
       const saved = localStorage.getItem('profileSelf')
@@ -157,15 +174,15 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
               <div className="post-body">
                 <p>{p.body}</p>
               </div>
-              {p.media?.length ? (
-                <div className={`post-media-grid ${p.media.length === 1 ? 'is-single' : ''}`}>
-                  {p.media.map((src, idx) => (
-                    <div key={idx} className="media ph" onClick={() => setLightboxSrc(src)}>
-                      <img src={src} alt="" />
-                    </div>
-                  ))}
+              {[tempImage, tempImage2].map((img, i) => (
+                <div
+                  key={i}
+                  className="media ph"
+                  onClick={() => openLightbox([tempImage, tempImage2], i)}
+                >
+                  <img src={img} alt="" />
                 </div>
-              ) : null}
+              ))}
               <div className="post-actions">
                 <button>❤️ 0</button>
                 <button>💬</button>
@@ -187,8 +204,15 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
               <p>Never gonna give you up<br/>Never gonna let you down<br/>Never gonna run around and desert you</p>
             </div>
             <div className="post-media-grid">
-              <div className="media ph" onClick={() => setLightboxSrc(tempImage)}><img src={tempImage} alt="" /></div>
-              <div className="media ph" onClick={() => setLightboxSrc(tempImage)}><img src={tempImage} alt="" /></div>
+              {[tempImage, tempImage2].map((img, i) => (
+                <div
+                  key={i}
+                  className="media ph"
+                  onClick={() => openLightbox([tempImage, tempImage2], i)}
+                >
+                  <img src={img} alt="" />
+                </div>
+              ))}
             </div>
             <div className="post-actions">
               <button>❤️ 067</button>
@@ -212,7 +236,12 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
                 TIETITEIEITEITEITEITEITIETIEITEITIETIEITIETIEITITEITEITEITEITIETIEITEITIE
               </p>
             </div>
-            <div className="post-media-wide ph" onClick={() => setLightboxSrc(tempImage)}><img src={tempImage} alt="" /></div>
+            <div
+              className="post-media-wide ph"
+              onClick={() => openLightbox([tempImage], 0)}
+            >
+              <img src={tempImage} alt="" />
+            </div>
             <div className="post-actions">
               <button>❤️ 124</button>
               <button>💬</button>
@@ -220,7 +249,14 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
             </div>
           </article>
         </main>
-        <ImageOverlay src={lightboxSrc} title="Post Image" onClose={() => setLightboxSrc(null)} />
+        <ImageOverlay
+            open={lightboxOpen}
+            images={lightboxImages}
+            startIndex={lightboxIndex}
+            title="Post Title Here"
+            description="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+            onClose={closeLightbox}
+        />
 
         {isComposerOpen ? (
           <PostComposer

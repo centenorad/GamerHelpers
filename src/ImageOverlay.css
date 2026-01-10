@@ -1,50 +1,96 @@
-/* Simple lightbox overlay */
-.lightbox-overlay {
+/* FULLSCREEN OVERLAY */
+.io-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
-}
-.lightbox-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(2px);
-}
-.lightbox-card {
-  position: relative;
-  width: min(900px, 92vw);
-  margin: 6vh auto 0;
-  background: rgba(10, 18, 24, 0.98);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.45);
-}
-.lightbox-header {
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(3px);
+
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  color: #e6edf1;
-}
-.lightbox-title {
-  font-weight: 800;
-}
-.lightbox-close {
-  border: none;
-  background: transparent;
-  color: #cfe5ee;
-  font-size: 20px;
-  line-height: 1;
-}
-.lightbox-media {
-  width: 100%;
-  background: #0c1318;
-}
-.lightbox-media img {
-  width: 100%;
-  height: auto;
-  display: block;
+  justify-content: center;
 }
 
+/* MODAL */
+.io-modal {
+  width: min(900px, 92vw);
+  max-height: 90vh;
+  background: #0b151b;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.io-header {
+  position: relative;
+  padding: 14px 48px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.io-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* CLOSE BUTTON */
+.io-close {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* MEDIA */
+.io-media {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #000;
+}
+
+.io-media img {
+  max-width: 100%;
+  max-height: 65vh;
+  border-radius: 6px;
+}
+
+/* FOOTER TEXT */
+.io-footer {
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: #cde3eb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* BOTTOM NAVIGATION */
+.io-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 10px 0 14px;
+  color: #cde3eb;
+  font-size: 13px;
+}
+
+.io-nav button {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  cursor: pointer;
+}
