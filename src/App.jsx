@@ -229,6 +229,7 @@ function App() {
             }}
             onNavigateHome={() => setAuthedPage('home')}
             onNavigateExplore={() => setAuthedPage('explore')}
+            onOpenChat={() => setAuthedPage('chat')}
             recentVisits={recentVisits}
             openLightbox={openLightbox}
             variant="self"

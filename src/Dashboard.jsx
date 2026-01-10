@@ -3,7 +3,7 @@ import brandLogo from './assets/logo.png'
 import userAvatar from './assets/chesterpogi.jpg'
 import { GAMES } from './games'
 import tempImage from './assets/strongman.png'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
 function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onOpenChat, recentVisits = [] }) {
@@ -37,7 +37,68 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
   )
 
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [avatarSrc, setAvatarSrc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved).avatar || userAvatar
+    } catch {}
+    return userAvatar
+  })
+  useEffect(() => {
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarSrc(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    return () => {
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [])
+  const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const [posts, setPosts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('userPosts')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return []
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('userPosts', JSON.stringify(posts))
+      window.dispatchEvent(new CustomEvent('posts-updated'))
+    } catch {}
+  }, [posts])
 
+  useEffect(() => {
+    function reloadPosts() {
+      try {
+        const saved = localStorage.getItem('userPosts')
+        if (saved) setPosts(JSON.parse(saved))
+      } catch {}
+    }
+    window.addEventListener('posts-updated', reloadPosts)
+    window.addEventListener('storage', reloadPosts)
+    return () => {
+      window.removeEventListener('posts-updated', reloadPosts)
+      window.removeEventListener('storage', reloadPosts)
+    }
+  }, [])
+
+  function addPost(post) {
+    setPosts((p) => [post, ...p])
+  }
+
+  useEffect(() => {
+    function openComposer() {
+      setIsComposerOpen(true)
+    }
+    window.addEventListener('open-composer', openComposer)
+    return () => window.removeEventListener('open-composer', openComposer)
+  }, [])
   return (
     <div className="dash">
       <header className="dash-header">
@@ -50,10 +111,10 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
         </div>
         <div className="dash-right">
           <button className="dash-icon" aria-label="Messages" onClick={()=> onOpenChat && onOpenChat()}><IconChat /></button>
-          <button className="dash-icon" aria-label="Compose"><IconPen /></button>
+          <button className="dash-icon" aria-label="Compose" onClick={()=> setIsComposerOpen(true)}><IconPen /></button>
           <button className="dash-icon" aria-label="Alerts"><IconBell /></button>
           <div className="dash-avatar" role="button" onClick={() => onOpenProfile && onOpenProfile()}>
-            <img src={userAvatar} alt="profile" className="avatar-img" />
+            <img src={avatarSrc} alt="profile" className="avatar-img" />
           </div>
           <button className="dash-btn" onClick={onLogout}>Logout</button>
         </div>
@@ -82,9 +143,39 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
         </aside>
 
         <main className="dash-feed">
+          {posts.map((p) => (
+            <article className="post" key={p.id}>
+              <div className="post-header">
+                <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
+                <div className="post-meta">
+                  <div className="post-author">Chester Bryan Torres</div>
+                  <div className="post-sub">posted just now</div>
+                </div>
+                <button className="post-close" aria-label="Close">×</button>
+              </div>
+              <div className="post-title">{p.title}</div>
+              <div className="post-body">
+                <p>{p.body}</p>
+              </div>
+              {p.media?.length ? (
+                <div className={`post-media-grid ${p.media.length === 1 ? 'is-single' : ''}`}>
+                  {p.media.map((src, idx) => (
+                    <div key={idx} className="media ph" onClick={() => setLightboxSrc(src)}>
+                      <img src={src} alt="" />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className="post-actions">
+                <button>❤️ 0</button>
+                <button>💬</button>
+                <button>↗</button>
+              </div>
+            </article>
+          ))}
           <article className="post">
             <div className="post-header">
-              <div className="post-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+              <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
               <div className="post-meta">
                 <div className="post-author">Chester Bryan Torres</div>
                 <div className="post-sub">has a piloting service for Valorant</div>
@@ -108,7 +199,7 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
 
           <article className="post">
             <div className="post-header">
-              <div className="post-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+              <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
               <div className="post-meta">
                 <div className="post-author">Chester Bryan Torres</div>
                 <div className="post-sub">has a coaching service for Genshin Impact</div>
@@ -131,6 +222,16 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
         </main>
         <ImageOverlay src={lightboxSrc} title="Post Image" onClose={() => setLightboxSrc(null)} />
 
+        {isComposerOpen ? (
+          <PostComposer
+            onClose={() => setIsComposerOpen(false)}
+            onSubmit={(post) => {
+              addPost(post)
+              setIsComposerOpen(false)
+            }}
+          />
+        ) : null}
+
         <aside className="dash-rightbar">
           <div className="dash-card">
             <div className="dash-card-title">Who to follow</div>
@@ -149,3 +250,73 @@ function Dashboard({ onLogout, onNavigateExplore, onOpenGame, onOpenProfile, onO
 export default Dashboard
 
 
+function PostComposer({ onClose, onSubmit }) {
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [files, setFiles] = useState([])
+  const [previews, setPreviews] = useState([])
+
+  function onPick(e) {
+    const list = Array.from(e.target.files || [])
+    setFiles(list)
+    const urls = list.map((f) => URL.createObjectURL(f))
+    setPreviews(urls)
+  }
+
+  function submit(e) {
+    e.preventDefault()
+    if (!title.trim() && !body.trim() && previews.length === 0) return
+    onSubmit &&
+      onSubmit({
+        id: 'p-' + Math.random().toString(36).slice(2, 8),
+        title: title.trim(),
+        body: body.trim(),
+        media: previews,
+      })
+  }
+
+  return (
+    <div className="composer-overlay" role="dialog" aria-modal="true">
+      <div className="composer-backdrop" onClick={onClose} />
+      <div className="composer-card">
+        <div className="composer-head">
+          <h3>Create Post</h3>
+          <button className="composer-close" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <form className="composer-form" onSubmit={submit}>
+          <label className="composer-label">
+            <span>Title</span>
+            <input className="composer-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label className="composer-label">
+            <span>Description</span>
+            <textarea className="composer-textarea" value={body} onChange={(e) => setBody(e.target.value)} />
+          </label>
+          <label className="composer-label">
+            <span>Photos</span>
+            <input className="composer-input" type="file" multiple accept="image/*" onChange={onPick} />
+          </label>
+          {previews.length ? (
+            <div className="composer-previews">
+              {previews.map((src, i) => (
+                <div key={i} className="composer-thumb">
+                  <img src={src} alt="" />
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="composer-actions">
+            <button type="button" className="admin-btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="admin-btn">
+              Post
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

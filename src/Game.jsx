@@ -3,7 +3,7 @@ import brandLogo from './assets/logo.png'
 import { GAMES } from './games'
 import userAvatar from './assets/chesterpogi.jpg'
 import tempImage from './assets/strongman.png'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
 function Game({ gameKey = 'genshin', onLogout, onNavigateHome, onNavigateExplore, onOpenGame, onOpenProfile, onOpenChat, recentVisits = [], openLightbox }) {
@@ -39,6 +39,27 @@ function Game({ gameKey = 'genshin', onLogout, onNavigateHome, onNavigateExplore
   )
 
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [avatarSrc, setAvatarSrc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved).avatar || userAvatar
+    } catch {}
+    return userAvatar
+  })
+  useEffect(() => {
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarSrc(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    return () => {
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [])
 
   return (
     <div className="dash">
@@ -52,10 +73,10 @@ function Game({ gameKey = 'genshin', onLogout, onNavigateHome, onNavigateExplore
         </div>
         <div className="dash-right">
           <button className="dash-icon" aria-label="Messages" onClick={()=> onOpenChat && onOpenChat()}><IconChat /></button>
-          <button className="dash-icon" aria-label="Compose"><IconPen /></button>
+          <button className="dash-icon" aria-label="Compose" onClick={()=> { onNavigateHome && onNavigateHome(); setTimeout(()=>window.dispatchEvent(new CustomEvent('open-composer')),0) }}><IconPen /></button>
           <button className="dash-icon" aria-label="Alerts"><IconBell /></button>
           <div className="dash-avatar" role="button" onClick={() => onOpenProfile && onOpenProfile()}>
-            <img src={userAvatar} alt="profile" className="avatar-img" />
+            <img src={avatarSrc} alt="profile" className="avatar-img" />
           </div>
           <button className="dash-btn" onClick={onLogout}>Logout</button>
         </div>
@@ -94,7 +115,7 @@ function Game({ gameKey = 'genshin', onLogout, onNavigateHome, onNavigateExplore
           {[1, 2].map((n) => (
             <article className="post" key={`post-${n}`}>
               <div className="post-header">
-              <div className="post-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+              <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
                 <div className="post-meta">
                   <div className="post-author">Chester Bryan Torres</div>
                   <div className="post-sub">has a coaching service for {game.name}</div>

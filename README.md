@@ -345,3 +345,123 @@ Date: 2026‑01‑09
 2. You should be routed to `#/admin` automatically.  
 3. Try banning/unbanning a user, deleting a post, adding a game. Refresh to confirm persistence.  
 4. Click “Sign out” on Admin header → returns to Home and clears admin session.
+
+///////////////////////////////////////////////////////////////////////////
+Date: 2026‑01‑10
+
+## Change Log (Frontend)
+
+This section documents recent edits so teammates can quickly understand what changed and where to look.
+
+### Admin flow
+- `src/Admin.jsx`, `src/Admin.css` (added)
+  - Admin tables for Users (ban/unban), Posts (delete), Games (add/delete).
+  - Local persistence via `localStorage` key `adminData`.
+  - “Back” and “Sign out” buttons.
+- `src/AdminLogin.jsx` (added)
+  - Minimal login screen for admin.
+  - Credentials: Email `admin@gmail.com`, Password `Admin123`.
+- `src/App.jsx`
+  - Added hash routing for admin routes: `#/admin` and `#/admin-login`.
+  - Prioritized rendering of Admin/AdminLogin even if user is not authed.
+  - Wired Admin login from the normal Login modal; removed header Admin button.
+
+### Auth
+- `src/RegLogin.jsx`
+  - Login now checks for admin credentials and calls `onAdminLogin()` when matched.
+  - Otherwise proceeds with normal `onSuccess()` (user login).
+
+### Lightbox (image overlay)
+- `src/ImageOverlay.jsx`, `src/ImageOverlay.css` (added)
+  - Reusable overlay for viewing images.
+- Wired on click in:
+  - `src/Dashboard.jsx`
+  - `src/Game.jsx`
+  - `src/Profile.jsx`
+
+### Compose posts (Home) and sync to Profile
+- `src/Dashboard.jsx`
+  - Compose modal (open with the top-right pencil icon).
+  - Create posts with Title, Description, and multiple photos.
+  - Persist posts in `localStorage` as `userPosts`.
+  - Dispatch a global `posts-updated` event on changes; listen to reload.
+- `src/Dashboard.css`
+  - Styles for the composer modal and thumbnails.
+- `src/Profile.jsx`
+  - Displays “My Posts” (from `localStorage/userPosts`) above the sample post.
+  - Supports delete (updates `localStorage` and broadcasts `posts-updated`).
+
+### Profile editing and avatar propagation
+- `src/Profile.jsx`
+  - Added Edit Profile modal (self): Name, Username, Bio, Picture.
+  - Picture is stored as a Data URL in `localStorage/profileSelf`.
+  - Dispatches `profile-updated` event after save.
+- Updated the header avatar to reflect changes across pages:
+  - `src/Dashboard.jsx`, `src/Explore.jsx`, `src/Game.jsx`, `src/Chat.jsx`
+  - Each listens for `profile-updated`/`storage` and reloads `profileSelf.avatar`.
+
+### Top-right nav consistency
+- Chat icon now works from all pages:
+  - `src/App.jsx` passes appropriate nav handlers.
+  - `src/Explore.jsx`, `src/Game.jsx`, `src/Profile.jsx`, `src/Dashboard.jsx` call `onOpenChat()` to route to Chat.
+- Compose icon works from all pages:
+  - Explore/Game/Profile route to Home and dispatch `open-composer`, which Home listens to and opens the composer.
+
+### Chat page fix
+- `src/Chat.jsx`
+  - Import `useState`, `useEffect` from React and refactor to avoid blank screen.
+  - Update avatar via `profile-updated` events.
+
+### Avatar & Profile Sync (2026‑01‑10)
+
+- **Edit Profile → Global Avatar Update**
+  - When the user saves a new avatar in `Edit Profile`, the image is converted to a Data URL and persisted in `localStorage` as `profileSelf.avatar`.
+  - A global `profile-updated` event is dispatched so all pages can update immediately.
+
+- **Header Avatar (beside “Logout”)**
+  - Updated on all pages to read from `localStorage.profileSelf.avatar` and listen for `profile-updated` + `storage` events:
+    - `src/Dashboard.jsx`
+    - `src/Explore.jsx`
+    - `src/Game.jsx`
+    - `src/Chat.jsx`
+    - `src/Profile.jsx` (now also listens and updates its own header icon)
+  - Result: the header avatar updates instantly after saving a new picture in `Edit Profile`, even on the Profile page.
+
+- **Post Header Avatars**
+  - Sample posts and newly created posts now render the current avatar dynamically:
+    - `Dashboard.jsx` (feed posts)
+    - `Profile.jsx` (“My Posts” and sample post)
+    - `Game.jsx` (sample posts)
+  - All these components reference the current `profileSelf.avatar`, so the avatar on posts updates after a profile change.
+
+- **Implementation Notes**
+  - `Edit Profile` (in `src/Profile.jsx`) calls:
+    ```js
+    localStorage.setItem('profileSelf', JSON.stringify(updatedProfile));
+    window.dispatchEvent(new CustomEvent('profile-updated'))
+    ```
+  - Each page keeps an `avatar` state initialized from localStorage and subscribes to:
+    ```js
+    useEffect(() => {
+      function syncAvatar() { /* read localStorage.profileSelf.avatar and set state */ }
+      window.addEventListener('profile-updated', syncAvatar)
+      window.addEventListener('storage', syncAvatar)
+      return () => {
+        window.removeEventListener('profile-updated', syncAvatar)
+        window.removeEventListener('storage', syncAvatar)
+      }
+    }, [])
+    ```
+
+### Misc
+- Removed the Admin link from the left sidebar (`src/Dashboard.jsx`).
+- Added and used placeholder image `src/assets/strongman.png` for demo posts.
+- Kept direct routes for Admin (`#/admin`) and Admin Login (`#/admin-login`).
+
+If any teammate needs more detail on a specific change, search for the file path above and review the inline comments or state blocks around the described features.
+
+
+
+
+
+

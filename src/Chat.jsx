@@ -1,9 +1,31 @@
 import './Dashboard.css'
 import brandLogo from './assets/logo.png'
 import userAvatar from './assets/chesterpogi.jpg'
+import { useState, useEffect } from 'react'
 
 function Chat({ onLogout, onNavigateHome, onNavigateExplore, selectedUser, onOpenProfile }) {
   const user = selectedUser || { name: 'Chester Bryan Torres' }
+  const [avatarSrc, setAvatarSrc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved).avatar || userAvatar
+    } catch {}
+    return userAvatar
+  })
+  useEffect(() => {
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarSrc(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    return () => {
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [])
 
   const IconHome = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -49,7 +71,7 @@ function Chat({ onLogout, onNavigateHome, onNavigateExplore, selectedUser, onOpe
           <button className="dash-icon" aria-label="Compose"><IconPen /></button>
           <button className="dash-icon" aria-label="Alerts"><IconBell /></button>
           <div className="dash-avatar" role="button" onClick={() => onOpenProfile && onOpenProfile()}>
-            <img src={userAvatar} alt="profile" className="avatar-img" />
+            <img src={avatarSrc} alt="profile" className="avatar-img" />
           </div>
           <button className="dash-btn" onClick={onLogout}>Logout</button>
         </div>
@@ -60,7 +82,7 @@ function Chat({ onLogout, onNavigateHome, onNavigateExplore, selectedUser, onOpe
           <div className="chat-list-title">Chats</div>
           {Array.from({ length: 6 }).map((_, i) => (
             <div className={`chat-list-item ${i === 0 ? 'is-active' : ''}`} key={i}>
-              <div className="chat-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+              <div className="chat-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
               <div className="chat-name">{user.name}</div>
             </div>
           ))}
@@ -68,7 +90,7 @@ function Chat({ onLogout, onNavigateHome, onNavigateExplore, selectedUser, onOpe
 
         <main className="chat-thread">
           <div className="chat-thread-head">
-            <div className="chat-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+            <div className="chat-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
             <div className="chat-name">{user.name}</div>
           </div>
 

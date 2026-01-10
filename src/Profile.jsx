@@ -3,7 +3,7 @@ import brandLogo from './assets/logo.png'
 import { GAMES } from './games'
 import userAvatar from './assets/chesterpogi.jpg'
 import tempImage from './assets/strongman.png'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ImageOverlay from './ImageOverlay.jsx'
 
 function Profile({
@@ -17,6 +17,35 @@ function Profile({
   openLightbox,
 }) {
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [profile, setProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return { name: user.name, handle: user.handle, bio: 'Hello this is my bio', avatar: userAvatar }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('profileSelf', JSON.stringify(profile)) } catch {}
+  }, [profile])
+  // Keep the header avatar (beside Logout) in sync on this page as well
+  const [avatarHeader, setAvatarHeader] = useState(() => profile.avatar || userAvatar)
+  useEffect(() => {
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarHeader(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    // also update when local profile state changes
+    syncAvatar()
+    return () => {
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [profile.avatar])
   const IconHome = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M3 10l9-7 9 7v10a2 2 0 01-2 2h-5v-7H10v7H5a2 2 0 01-2-2V10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -57,11 +86,11 @@ function Profile({
           <input className="dash-search" placeholder="Search" />
         </div>
         <div className="dash-right">
-          <button className="dash-icon" aria-label="Messages"><IconChat /></button>
-          <button className="dash-icon" aria-label="Compose"><IconPen /></button>
+          <button className="dash-icon" aria-label="Messages" onClick={()=> onOpenChat && onOpenChat()}><IconChat /></button>
+          <button className="dash-icon" aria-label="Compose" onClick={()=> { onNavigateHome && onNavigateHome(); setTimeout(()=>window.dispatchEvent(new CustomEvent('open-composer')),0) }}><IconPen /></button>
           <button className="dash-icon" aria-label="Alerts"><IconBell /></button>
           <div className="dash-avatar">
-            <img src={userAvatar} alt="profile" className="avatar-img" />
+            <img src={avatarHeader} alt="profile" className="avatar-img" />
           </div>
           <button className="dash-btn" onClick={onLogout}>Logout</button>
         </div>
@@ -93,27 +122,28 @@ function Profile({
 
         <main className="dash-feed">
           <div className="profile-head">
-            <div className="profile-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+            <div className="profile-avatar"><img src={profile.avatar || userAvatar} alt="" className="avatar-img" /></div>
             <div className="profile-info">
-              <div className="profile-name">{user.name}</div>
-              <div className="profile-handle">{user.handle}</div>
+              <div className="profile-name">{profile.name}</div>
+              <div className="profile-handle">{profile.handle}</div>
             </div>
             {variant === 'self' ? (
-              <button className="profile-edit">Edit Profile</button>
+              <button className="profile-edit" onClick={()=> setIsEditOpen(true)}>Edit Profile</button>
             ) : (
               <button className="profile-edit" onClick={() => onOpenChat && onOpenChat(user)}>Message</button>
             )}
           </div>
           <div className="profile-bio">
-            Hello this is my bio<br />
-            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            {profile.bio}
           </div>
 
           <h3 className="exp-heading">Posts</h3>
 
+          <UserPostsList />
+
           <article className="post">
             <div className="post-header">
-              <div className="post-avatar"><img src={userAvatar} alt="" className="avatar-img" /></div>
+              <div className="post-avatar"><img src={profile.avatar || userAvatar} alt="" className="avatar-img" /></div>
               <div className="post-meta">
                 <div className="post-author">Chester Bryan Torres</div>
                 <div className="post-sub">has a coaching service for Genshin Impact</div>
@@ -144,6 +174,18 @@ function Profile({
           </article>
         </main>
         <ImageOverlay src={lightboxSrc} title="Post Image" onClose={() => setLightboxSrc(null)} />
+        {isEditOpen ? (
+          <EditProfileModal
+            initial={profile}
+            onClose={()=> setIsEditOpen(false)}
+            onSave={(p)=> { 
+              setProfile(p); 
+              setIsEditOpen(false); 
+              try { localStorage.setItem('profileSelf', JSON.stringify(p)) } catch {}
+              window.dispatchEvent(new CustomEvent('profile-updated'))
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -151,3 +193,152 @@ function Profile({
 
 export default Profile
 
+function UserPostsList() {
+  const [posts, setPosts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('userPosts')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return []
+  })
+  const [avatarSrc, setAvatarSrc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved).avatar || userAvatar
+    } catch {}
+    return userAvatar
+  })
+  useEffect(() => {
+    function reload() {
+      try {
+        const saved = localStorage.getItem('userPosts')
+        if (saved) setPosts(JSON.parse(saved))
+      } catch {}
+    }
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarSrc(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('posts-updated', reload)
+    window.addEventListener('storage', reload)
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    return () => {
+      window.removeEventListener('posts-updated', reload)
+      window.removeEventListener('storage', reload)
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [])
+
+  function deletePost(id) {
+    setPosts((curr) => {
+      const next = curr.filter((p) => p.id !== id)
+      try {
+        localStorage.setItem('userPosts', JSON.stringify(next))
+        window.dispatchEvent(new CustomEvent('posts-updated'))
+      } catch {}
+      return next
+    })
+  }
+
+  if (!posts.length) return null
+
+  return (
+    <>
+      {posts.map((p) => (
+        <article className="post" key={p.id}>
+          <div className="post-header">
+            <div className="post-avatar"><img src={avatarSrc} alt="" className="avatar-img" /></div>
+            <div className="post-meta">
+              <div className="post-author">Chester Bryan Torres</div>
+              <div className="post-sub">posted just now</div>
+            </div>
+            <button className="post-close" aria-label="Delete" onClick={() => deletePost(p.id)}>×</button>
+          </div>
+          <div className="post-title">{p.title}</div>
+          <div className="post-body">
+            <p>{p.body}</p>
+          </div>
+          {p.media?.length ? (
+            <div className={`post-media-grid ${p.media.length === 1 ? 'is-single' : ''}`}>
+              {p.media.map((src, idx) => (
+                <div key={idx} className="media ph">
+                  <img src={src} alt="" />
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="post-actions">
+            <button>❤️ 0</button>
+            <button>💬</button>
+            <button>↗</button>
+          </div>
+        </article>
+      ))}
+    </>
+  )
+}
+
+function EditProfileModal({ initial, onClose, onSave }) {
+  const [name, setName] = useState(initial.name || '')
+  const [handle, setHandle] = useState(initial.handle || '')
+  const [bio, setBio] = useState(initial.bio || '')
+  const [avatar, setAvatar] = useState(initial.avatar || '')
+
+  function pick(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setAvatar(reader.result)
+    }
+    reader.readAsDataURL(f)
+  }
+
+  function submit(e) {
+    e.preventDefault()
+    onSave && onSave({ name, handle, bio, avatar })
+  }
+
+  return (
+    <div className="composer-overlay" role="dialog" aria-modal="true">
+      <div className="composer-backdrop" onClick={onClose} />
+      <div className="composer-card" style={{ width: 'min(520px, 94vw)' }}>
+        <div className="composer-head">
+          <h3>Edit Profile</h3>
+          <button className="composer-close" aria-label="Close" onClick={onClose}>×</button>
+        </div>
+        <form className="composer-form" onSubmit={submit}>
+          <label className="composer-label">
+            <span>Name</span>
+            <input className="composer-input" value={name} onChange={(e)=> setName(e.target.value)} />
+          </label>
+          <label className="composer-label">
+            <span>Username</span>
+            <input className="composer-input" value={handle} onChange={(e)=> setHandle(e.target.value)} />
+          </label>
+          <label className="composer-label">
+            <span>Bio</span>
+            <textarea className="composer-textarea" value={bio} onChange={(e)=> setBio(e.target.value)} />
+          </label>
+          <label className="composer-label">
+            <span>Picture</span>
+            <input type="file" accept="image/*" onChange={pick} className="composer-input" />
+          </label>
+          {avatar ? (
+            <div className="composer-previews">
+              <div className="composer-thumb"><img src={avatar} alt="" /></div>
+            </div>
+          ) : null}
+          <div className="composer-actions">
+            <button type="button" className="admin-btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="admin-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

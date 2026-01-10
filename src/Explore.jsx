@@ -2,6 +2,7 @@ import './Dashboard.css'
 import brandLogo from './assets/logo.png'
 import { GAMES } from './games'
 import userAvatar from './assets/chesterpogi.jpg'
+import { useState, useEffect } from 'react'
 import avatarBading from './assets/bading.jpg'
 import avatarBengkong from './assets/bengkong.jpg'
 import avatarGandara from './assets/gandara.jpg'
@@ -9,6 +10,27 @@ import avatarMrSuave from './assets/mrsuave.jpg'
 import avatarStrongman from './assets/strongman.png'
 
 function Explore({ onLogout, onNavigateHome, onOpenGame, onOpenProfile, onOpenUser, onOpenChat, recentVisits = [] }) {
+  const [avatarSrc, setAvatarSrc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('profileSelf')
+      if (saved) return JSON.parse(saved).avatar || userAvatar
+    } catch {}
+    return userAvatar
+  })
+  useEffect(() => {
+    function syncAvatar() {
+      try {
+        const saved = localStorage.getItem('profileSelf')
+        if (saved) setAvatarSrc(JSON.parse(saved).avatar || userAvatar)
+      } catch {}
+    }
+    window.addEventListener('profile-updated', syncAvatar)
+    window.addEventListener('storage', syncAvatar)
+    return () => {
+      window.removeEventListener('profile-updated', syncAvatar)
+      window.removeEventListener('storage', syncAvatar)
+    }
+  }, [])
   const IconHome = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M3 10l9-7 9 7v10a2 2 0 01-2 2h-5v-7H10v7H5a2 2 0 01-2-2V10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -52,10 +74,10 @@ function Explore({ onLogout, onNavigateHome, onOpenGame, onOpenProfile, onOpenUs
         </div>
         <div className="dash-right">
           <button className="dash-icon" aria-label="Messages" onClick={()=> onOpenChat && onOpenChat()}><IconChat /></button>
-          <button className="dash-icon" aria-label="Compose"><IconPen /></button>
+          <button className="dash-icon" aria-label="Compose" onClick={()=> { onNavigateHome && onNavigateHome(); setTimeout(()=>window.dispatchEvent(new CustomEvent('open-composer')),0) }}><IconPen /></button>
           <button className="dash-icon" aria-label="Alerts"><IconBell /></button>
           <div className="dash-avatar" role="button" onClick={() => onOpenProfile && onOpenProfile()}>
-            <img src={userAvatar} alt="profile" className="avatar-img" />
+            <img src={avatarSrc} alt="profile" className="avatar-img" />
           </div>
           <button className="dash-btn" onClick={onLogout}>Logout</button>
         </div>
