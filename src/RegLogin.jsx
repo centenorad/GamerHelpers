@@ -142,8 +142,10 @@ export function SignUp({ open, onClose, onSuccess }) {
   )
 }
 
-export function Login({ open, onClose, onOpenSignUp, onSuccess }) {
+export function Login({ open, onClose, onOpenSignUp, onSuccess, onAdminLogin }) {
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   if (!open) return null
 
@@ -165,13 +167,26 @@ export function Login({ open, onClose, onOpenSignUp, onSuccess }) {
           className="login-form"
           onSubmit={(e) => {
             e.preventDefault()
-            if (onSuccess) onSuccess()
+            const isAdmin =
+              email.trim().toLowerCase() === 'admin@gmail.com' && password === 'Admin123'
+            if (isAdmin && onAdminLogin) {
+              onAdminLogin()
+            } else if (onSuccess) {
+              onSuccess({ email })
+            }
             if (onClose) onClose()
           }}
         >
           <label className="login-label">
             <span>Email address</span>
-            <input className="login-input" type="email" name="email" required />
+            <input
+              className="login-input"
+              type="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </label>
 
           <label className="login-label">
@@ -181,6 +196,8 @@ export function Login({ open, onClose, onOpenSignUp, onSuccess }) {
                 className="login-input"
                 type={showPassword ? 'text' : 'password'}
                 name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
               <button

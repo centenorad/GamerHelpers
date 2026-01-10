@@ -287,3 +287,61 @@ Message
    - Already wired; pass `media` arrays into click handlers
 
 If anything in your backend differs (endpoint names, auth method, pagination), share the contract and I’ll align the calls and types to match exactly.***
+
+
+////////////////////////////////////////////////
+Admin Flow & Recent Changes
+
+Date: 2026‑01‑09
+
+## How to reach the Admin page
+
+- There is no separate “Admin” button in the UI anymore.  
+- Log in from the standard Login modal using:
+  - **Email:** `admin@gmail.com`  
+  - **Password:** `Admin123`
+- On successful admin login we set `adminAuthed=true` in `localStorage` and route to `#/admin`.
+- “Sign out” on the Admin page clears `adminAuthed` and returns to Home.
+- Direct links:
+  - `#/admin` (opens Admin if `adminAuthed` is true, otherwise shows Admin Login)
+  - `#/admin-login` (Admin login screen)
+
+## Files changed/added
+
+- `src/RegLogin.jsx`  
+  - Added email/password state and admin credential check.  
+  - New prop: `onAdminLogin()` called when creds match `admin@gmail.com` / `Admin123`.
+
+- `src/App.jsx`  
+  - Removed public “Admin” header button.  
+  - Wires `onAdminLogin` to set `adminAuthed` and route to `#/admin`.  
+  - Adds simple hash routing for `#/admin` and `#/admin-login`.  
+  - Prioritizes rendering of Admin/AdminLogin even when not user‑authed.  
+  - Keeps normal user login flow unchanged.
+
+- `src/Dashboard.jsx`  
+  - Removed “Admin” item from the left sidebar (Home/Explore only).
+
+- `src/Admin.jsx` & `src/Admin.css` (new)  
+  - Admin tables: Users (ban/unban), Posts (delete), Games (add/delete).  
+  - Data persisted in `localStorage` under key `adminData`.  
+  - Includes “Back” and “Sign out” controls.
+
+- `src/AdminLogin.jsx` (new)  
+  - Minimal Admin login screen used when navigating to `#/admin-login`.
+
+- `src/ImageOverlay.jsx` & `src/ImageOverlay.css` (new)  
+  - Reusable image lightbox overlay (Esc/click outside to close).
+
+- `src/Dashboard.css`  
+  - Media `<img>` fit/rounding improvements for post tiles.
+
+- `src/Dashboard.jsx`, `src/Profile.jsx`, `src/Game.jsx`  
+  - Post images open the shared lightbox.
+
+## Test steps
+
+1. Open the site, click “Login” and use admin credentials above.  
+2. You should be routed to `#/admin` automatically.  
+3. Try banning/unbanning a user, deleting a post, adding a game. Refresh to confirm persistence.  
+4. Click “Sign out” on Admin header → returns to Home and clears admin session.

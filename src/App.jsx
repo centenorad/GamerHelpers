@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import brandLogo from './assets/logo.png'
 import clashLogo from './assets/clash.png'
@@ -14,6 +14,8 @@ import { GAMES } from './games'
 import Toast from './Toast.jsx'
 import Profile from './Profile.jsx'
 import Chat from './Chat.jsx'
+import Admin from './Admin.jsx'
+import AdminLogin from './AdminLogin.jsx'
 import Lightbox from './Lightbox.jsx'
 
 function App() {
@@ -21,9 +23,15 @@ function App() {
   const [isSignUpOpen, setIsSignUpOpen] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isAuthed, setIsAuthed] = useState(false)
-  const [authedPage, setAuthedPage] = useState('home') // 'home' | 'explore' | 'game' | 'profile' | 'user'
+  const [authedPage, setAuthedPage] = useState('home') // 'home' | 'explore' | 'game' | 'profile' | 'user' | 'admin'
   const [selectedGame, setSelectedGame] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
+  const [adminAuthed, setAdminAuthed] = useState(() => {
+    try {
+      return localStorage.getItem('adminAuthed') === 'true'
+    } catch {}
+    return false
+  })
   const [recentVisits, setRecentVisits] = useState(() => {
     try {
       const saved = localStorage.getItem('recentVisits')
@@ -37,6 +45,39 @@ function App() {
   function showToast(message) {
     setToastMsg(message)
   }
+  function openAdminRoute() {
+    if (adminAuthed) {
+      window.location.hash = '/admin'
+      setAuthedPage('admin')
+    } else {
+      window.location.hash = '/admin-login'
+      setAuthedPage('adminLogin')
+    }
+  }
+
+  // global event to navigate to admin from Dashboard nav
+  useEffect(() => {
+    function openAdmin() {
+      openAdminRoute()
+    }
+    window.addEventListener('open-admin', openAdmin)
+    return () => window.removeEventListener('open-admin', openAdmin)
+  }, [adminAuthed])
+
+  // simple hash routing for admin pages
+  useEffect(() => {
+    function syncFromHash() {
+      const h = window.location.hash
+      if (h === '#/admin') {
+        setAuthedPage(adminAuthed ? 'admin' : 'adminLogin')
+      } else if (h === '#/admin-login') {
+        setAuthedPage('adminLogin')
+      }
+    }
+    window.addEventListener('hashchange', syncFromHash)
+    syncFromHash()
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [adminAuthed])
 
   function updateRecentVisits(gameKey) {
     const allowed = Object.keys(GAMES)
@@ -59,6 +100,36 @@ function App() {
   }
   function closeLightbox() {
     setLightbox((l) => ({ ...l, open: false }))
+  }
+
+  // Render admin routes regardless of user auth
+  if (authedPage === 'adminLogin') {
+    return (
+      <div className="page">
+        <AdminLogin
+          onCancel={() => { setAuthedPage('home'); window.location.hash = '' }}
+          onSuccess={() => {
+            setAdminAuthed(true)
+            try { localStorage.setItem('adminAuthed', 'true') } catch {}
+            setAuthedPage('admin'); window.location.hash = '/admin'
+          }}
+        />
+      </div>
+    )
+  }
+  if (authedPage === 'admin' && adminAuthed) {
+    return (
+      <div className="page">
+        <Admin
+          onBack={() => { setAuthedPage('home'); window.location.hash = '' }}
+          onLogoutAdmin={() => {
+            setAdminAuthed(false)
+            try { localStorage.removeItem('adminAuthed') } catch {}
+            setAuthedPage('home'); window.location.hash = ''
+          }}
+        />
+      </div>
+    )
   }
 
   return (
@@ -241,6 +312,12 @@ function App() {
         onSuccess={() => {
           setIsAuthed(true)
           showToast('Login successful')
+        }}
+        onAdminLogin={() => {
+          setAdminAuthed(true)
+          try { localStorage.setItem('adminAuthed', 'true') } catch {}
+          setAuthedPage('admin'); window.location.hash = '/admin'
+          showToast('Welcome, Admin')
         }}
         onOpenSignUp={() => {
           setIsLoginOpen(false)
