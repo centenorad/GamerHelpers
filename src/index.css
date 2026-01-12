@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ghbackground: #040d12;
+  --color-ghforegroundlow: #767676;
+}
