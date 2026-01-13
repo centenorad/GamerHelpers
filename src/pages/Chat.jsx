@@ -1,5 +1,6 @@
 // React imports
 import { useState, useRef, useEffect } from "react";
+import { MessageCircle, Send, Plus, Info, MoreVertical } from "lucide-react";
 
 // File imports
 import Header from "../templates/Header";
@@ -73,49 +74,76 @@ export default function Chat() {
   return (
     <div className="bg-ghbackground min-h-screen w-full">
       <Header />
-      <div className="flex h-[calc(100vh-64px)]">
+      <div className="flex h-[calc(100vh-80px)]">
         {/* Sidebar */}
-        <aside className="w-72 bg-ghbackground border-r border-r-ghforegroundlow flex flex-col">
-          <h2 className="text-white text-2xl font-bold mx-4 mt-2 px-2 py-4 border-b border-ghforegroundlow">
-            Chats
-          </h2>
-          <div className="flex-1 overflow-y-auto">
+        <aside className="w-72 bg-ghbackground-secondary border-r border-ghforegroundlow/20 flex flex-col">
+          <div className="p-6 border-b border-ghforegroundlow/20">
+            <h2 className="text-white text-2xl font-bold flex items-center gap-2">
+              <MessageCircle size={24} /> Messages
+            </h2>
+            <p className="text-ghforegroundlow text-sm mt-1">
+              {chats.length} conversations
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 p-2">
             {chats.map((chat, idx) => (
               <div
                 key={chat.id}
-                className={`flex items-center gap-3 px-4 py-2 cursor-pointer ${
-                  idx === selectedIdx
-                    ? "bg-[#22313c] rounded-md"
-                    : "hover:bg-[#232b32]"
-                }`}
                 onClick={() => setSelectedIdx(idx)}
+                className={`flex items-center gap-3 px-4 py-3 cursor-pointer rounded-lg transition-all ${
+                  idx === selectedIdx
+                    ? "bg-ghaccent/20 border border-ghaccent/50 shadow-lg shadow-blue-500/20"
+                    : "hover:bg-ghforegroundlow/10 border border-transparent"
+                }`}
               >
-                <img
-                  src={chat.avatar}
-                  alt={chat.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <span className="text-white font-medium truncate">
-                  {chat.name}
-                </span>
+                <div className="relative">
+                  <img
+                    src={chat.avatar}
+                    alt={chat.name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-ghaccent/50"
+                  />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-ghbackground-secondary"></div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold truncate text-sm">
+                    {chat.name}
+                  </p>
+                  <p className="text-ghforegroundlow text-xs truncate">
+                    {chat.messages[chat.messages.length - 1]?.text}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </aside>
 
         {/* Chat area */}
-        <section className="flex-1 flex flex-col">
+        <section className="flex-1 flex flex-col bg-gradient-to-br from-ghbackground to-ghbackground-secondary">
           {/* Chat header */}
-          <div className="flex items-center gap-3 mx-4 px-4 py-4 border-b border-ghforegroundlow">
-            <img
-              src={selectedChat.avatar}
-              alt={selectedChat.name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <span className="text-white font-semibold text-lg">
-              {selectedChat.name}
-            </span>
+          <div className="flex items-center justify-between px-8 py-6 border-b border-ghforegroundlow/20 bg-ghbackground-secondary">
+            <div className="flex items-center gap-4">
+              <img
+                src={selectedChat.avatar}
+                alt={selectedChat.name}
+                className="w-12 h-12 rounded-full object-cover border-2 border-ghaccent"
+              />
+              <div>
+                <h3 className="text-white font-bold text-lg">
+                  {selectedChat.name}
+                </h3>
+                <p className="text-ghforegroundlow text-sm">Active now</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button className="p-2 hover:bg-ghforegroundlow/10 rounded-lg transition-all">
+                <Info size={20} />
+              </button>
+              <button className="p-2 hover:bg-ghforegroundlow/10 rounded-lg transition-all">
+                <MoreVertical size={20} />
+              </button>
+            </div>
           </div>
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-4">
             {selectedChat.messages.map((msg, i) => (
@@ -123,34 +151,52 @@ export default function Chat() {
                 key={i}
                 className={`flex ${
                   msg.fromMe ? "justify-end" : "justify-start"
-                }`}
+                } animate-slideInUp`}
               >
-                <span
-                  className={`px-4 py-2 rounded-lg text-sm max-w-[60%] wrap-break-words ${
+                <div
+                  className={`px-5 py-3 rounded-2xl max-w-[60%] break-words ${
                     msg.fromMe
-                      ? "bg-[#2563eb] text-white"
-                      : "bg-[#3a4044] text-gray-100"
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none shadow-lg shadow-blue-500/30"
+                      : "bg-ghbackground-secondary border border-ghforegroundlow/20 text-gray-100 rounded-bl-none"
                   }`}
                 >
                   {msg.text}
-                </span>
+                </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
           </div>
+
           {/* Input */}
           <form
-            className="px-8 py-4 border-t border-ghforegroundlow"
+            className="px-8 py-6 border-t border-ghforegroundlow/20 bg-ghbackground-secondary"
             onSubmit={handleSend}
           >
-            <input
-              type="text"
-              placeholder="Aa"
-              className="w-full bg-transparent border border-ghforegroundlow rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              autoComplete="off"
-            />
+            <div className="flex gap-3 items-end">
+              <button
+                type="button"
+                className="p-2 hover:bg-ghforegroundlow/10 rounded-lg transition-all"
+              >
+                <Plus size={24} />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  className="w-full bg-ghbackground border border-ghforegroundlow/20 rounded-full px-5 py-3 text-white placeholder-ghforegroundlow focus:outline-none focus:ring-2 focus:ring-ghaccent focus:border-transparent transition-all"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <button
+                type="submit"
+                className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full transition-all shadow-lg hover:shadow-blue-500/50 disabled:opacity-50"
+                disabled={!input.trim()}
+              >
+                <Send size={20} />
+              </button>
+            </div>
           </form>
         </section>
       </div>

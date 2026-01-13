@@ -1,6 +1,125 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ghbackground: #040d12;
-  --color-ghforegroundlow: #767676;
+  --color-ghbackground: #0a0e27;
+  --color-ghbackground-secondary: #111633;
+  --color-ghforegroundlow: #6b7280;
+  --color-ghaccent: #3b82f6;
+  --color-ghaccent-hover: #2563eb;
+  --color-ghsuccess: #10b981;
+  --color-ghwarning: #f59e0b;
+  --color-gherror: #ef4444;
+}
+
+/* Global styles */
+* {
+  transition: color 0.2s ease, background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+body {
+  background-color: var(--color-ghbackground);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-ghbackground);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-ghforegroundlow);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Button base styles */
+button {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Input base styles */
+input,
+textarea {
+  font-family: inherit;
+}
+
+/* Animation keyframes */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Utility animations */
+.animate-slideInDown {
+  animation: slideInDown 0.3s ease-out;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
 }

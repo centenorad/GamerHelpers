@@ -16,6 +16,7 @@ import Login from "./pages/login/Login";
 import LandingPage from "./pages/LandingPage";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
+import Apply from "./pages/Apply";
 import AdminLogin from "./pages/login/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 
@@ -55,6 +56,7 @@ function AppRoutes() {
         <>
           <Route path="/" element={<Home />} />
           <Route path="/chats" element={<Chat />} />
+          <Route path="/apply" element={<Apply />} />
           <Route path="*" element={<Navigate to="/" />} />
         </>
       ) : (
