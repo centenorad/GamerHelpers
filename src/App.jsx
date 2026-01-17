@@ -8,12 +8,13 @@ import {
 } from "react-router-dom";
 
 // File imports
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import { FullScreen, Center } from "./templates/Layouts";
 
 // Page imports
-import Login from "./pages/login/Login";
 import LandingPage from "./pages/LandingPage";
+import Login from "./pages/login/Login";
+import CreateAccount from "./pages/login/CreateAccount";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Apply from "./pages/Apply";
@@ -22,16 +23,14 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <Router>
+      <AppRoutes />
+    </Router>
   );
 }
 
 function AppRoutes() {
-  const { user, type, loading } = useAuth();
+  const { user, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -48,21 +47,22 @@ function AppRoutes() {
         <>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/create-account" element={<CreateAccount />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="*" element={<Navigate to="/" />} />
         </>
-      ) : type === "regular" ? (
-        // Normal users logged in
+      ) : role === "admin" ? (
+        // Admin logged in
+        <>
+          <Route path="/" element={<AdminDashboard />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </>
+      ) : (
+        // Regular users (user or employee) logged in
         <>
           <Route path="/" element={<Home />} />
           <Route path="/chats" element={<Chat />} />
           <Route path="/apply" element={<Apply />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </>
-      ) : (
-        // Admin logged in
-        <>
-          <Route path="/" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" />} />
         </>
       )}

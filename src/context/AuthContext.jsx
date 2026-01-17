@@ -1,49 +1,86 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { AuthAPI } from "../services/api";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [type, setType] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Restore user session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedType = localStorage.getItem("type");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setType(storedType);
-    }
-    setLoading(false);
+    const restoreSession = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const response = await AuthAPI.getCurrentUser();
+          setUser(response.user);
+        }
+      } catch (err) {
+        console.error("Failed to restore session:", err);
+        localStorage.removeItem("token");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
-  const loginUser = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("type", "regular");
-    setUser(userData);
-    setType("regular");
+  const register = async (email, password, fullName) => {
+    try {
+      setError(null);
+      const response = await AuthAPI.register(email, password, fullName);
+      localStorage.setItem("token", response.token);
+      setUser(response.user);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
   };
 
-  const loginAdmin = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("type", "admin");
-    setUser(userData);
-    setType("admin");
+  const login = async (email, password) => {
+    try {
+      setError(null);
+      const response = await AuthAPI.login(email, password);
+      localStorage.setItem("token", response.token);
+      setUser(response.user);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("type");
+    localStorage.removeItem("token");
     setUser(null);
+    setError(null);
+  };
+
+  // Determine user role
+  const getRole = () => {
+    if (!user) return null;
+    if (user.is_admin) return "admin";
+    if (user.is_employee) return "employee";
+    return "user";
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, type, loginUser, loginAdmin, logout, loading }}
+      value={{ user, loading, error, register, login, logout, role: getRole() }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};

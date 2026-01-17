@@ -1,7 +1,15 @@
 // React imports
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Gamepad2, Mail, Lock, Loader } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Gamepad2,
+  Mail,
+  Lock,
+  Loader,
+  AlertCircle,
+} from "lucide-react";
 
 // File imports
 import { useAuth } from "../../context/AuthContext";
@@ -11,20 +19,21 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
-  const { loginUser } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
-      const user = { email: email, password: password };
-      await loginUser(user);
+      await login(email, password);
       navigate("/", { replace: true });
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch (err) {
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +122,14 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-2 text-red-400">
+                <AlertCircle size={20} />
+                {error}
+              </div>
+            )}
+
             {/* Remember me & Forgot password */}
             <div className="flex justify-between items-center mb-8">
               <label className="flex items-center gap-2 text-sm text-ghforegroundlow hover:text-white transition-colors cursor-pointer">
@@ -171,7 +188,7 @@ export default function Login() {
               Don't have an account?{" "}
               <button
                 type="button"
-                onClick={() => navigate("/signup")}
+                onClick={() => navigate("/create-account")}
                 className="text-ghaccent hover:text-blue-400 font-semibold transition-colors"
               >
                 Sign up here

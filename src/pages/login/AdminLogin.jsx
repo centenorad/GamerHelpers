@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Loader,
   ArrowLeft,
+  AlertCircle,
 } from "lucide-react";
 
 // File imports
@@ -19,20 +20,21 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
-  const { loginAdmin } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
-      const user = { email: email, password: password };
-      await loginAdmin(user);
+      await login(email, password);
       navigate("/", { replace: true });
-    } catch (error) {
-      console.error("Admin login failed:", error);
+    } catch (err) {
+      setError(err.message || "Admin login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +83,14 @@ export default function AdminLogin() {
                 Secure admin access required
               </p>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-2 text-red-400">
+                <AlertCircle size={20} />
+                {error}
+              </div>
+            )}
 
             {/* Email Input */}
             <div className="mb-6">

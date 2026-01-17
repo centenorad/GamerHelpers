@@ -1,37 +1,49 @@
 // React imports
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, CheckCircle, AlertCircle, Loader } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader } from "lucide-react";
 
 // File imports
 import Header from "../templates/Header";
+import { ApplicationsAPI, GamesAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Apply() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [games, setGames] = useState([]);
   const [formData, setFormData] = useState({
+    game_id: "",
     title: "",
     description: "",
     price: "",
-    game: "",
-    images: [],
+    service_details: [],
     termsAccepted: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [loadingGames, setLoadingGames] = useState(true);
+
+  // Fetch games on mount
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        const res = await GamesAPI.getAllGames();
+        setGames(res.games || []);
+      } catch (err) {
+        console.error("Failed to fetch games:", err);
+      } finally {
+        setLoadingGames(false);
+      }
+    };
+    fetchGames();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
-    });
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    setFormData({
-      ...formData,
-      images: [...formData.images, ...files],
     });
   };
 
@@ -45,28 +57,49 @@ export default function Apply() {
       return;
     }
 
+    if (
+      !formData.game_id ||
+      !formData.title ||
+      !formData.description ||
+      !formData.price
+    ) {
+      setSubmitStatus({
+        type: "error",
+        message: "Please fill in all required fields",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await ApplicationsAPI.submitApplication({
+        game_id: parseInt(formData.game_id),
+        title: formData.title,
+        description: formData.description,
+        price: parseFloat(formData.price),
+      });
+
       setSubmitStatus({
         type: "success",
         message: "Application submitted! Admin will review it soon.",
       });
+
       // Reset form
       setFormData({
+        game_id: "",
         title: "",
         description: "",
         price: "",
-        game: "",
-        images: [],
+        service_details: [],
         termsAccepted: false,
       });
-      setTimeout(() => navigate("/"), 2000);
+
+      setTimeout(() => navigate("/", { replace: true }), 2000);
     } catch (error) {
       setSubmitStatus({
         type: "error",
-        message: "Failed to submit application. Please try again.",
+        message:
+          error.message || "Failed to submit application. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -84,7 +117,7 @@ export default function Apply() {
               Become an Employee
             </h1>
             <p className="text-ghforegroundlow text-lg">
-              Apply to become a coach and start offering your services
+              Apply to become a pilot or coach and start offering your services
             </p>
           </div>
 
@@ -132,20 +165,27 @@ export default function Apply() {
               <label className="block text-sm font-semibold text-white mb-2">
                 Main Game
               </label>
-              <select
-                name="game"
-                value={formData.game}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-lg bg-ghbackground border border-ghforegroundlow/20 text-white focus:outline-none focus:ring-2 focus:ring-ghaccent focus:border-transparent transition-all"
-                required
-              >
-                <option value="">Select a game</option>
-                <option value="valorant">Valorant</option>
-                <option value="lol">League of Legends</option>
-                <option value="apex">Apex Legends</option>
-                <option value="cs2">Counter-Strike 2</option>
-                <option value="other">Other</option>
-              </select>
+              {loadingGames ? (
+                <div className="flex items-center gap-2 text-ghforegroundlow">
+                  <Loader size={16} className="animate-spin" />
+                  Loading games...
+                </div>
+              ) : (
+                <select
+                  name="game_id"
+                  value={formData.game_id}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg bg-ghbackground border border-ghforegroundlow/20 text-white focus:outline-none focus:ring-2 focus:ring-ghaccent focus:border-transparent transition-all"
+                  required
+                >
+                  <option value="">Select a game</option>
+                  {games.map((game) => (
+                    <option key={game.id} value={game.id}>
+                      {game.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Description */}
@@ -181,40 +221,12 @@ export default function Apply() {
               />
             </div>
 
-            {/* Images Upload */}
-            <div>
-              <label className="block text-sm font-semibold text-white mb-2">
-                Upload Images
-              </label>
-              <label className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-ghforegroundlow/30 rounded-lg hover:border-ghaccent/50 transition-colors cursor-pointer">
-                <div className="text-center">
-                  <Upload
-                    size={32}
-                    className="mx-auto mb-2 text-ghforegroundlow"
-                  />
-                  <p className="text-ghforegroundlow">Click to upload images</p>
-                </div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </label>
-              {formData.images.length > 0 && (
-                <div className="mt-3 text-sm text-ghforegroundlow">
-                  {formData.images.length} image(s) selected
-                </div>
-              )}
-            </div>
-
             {/* Terms and Conditions */}
             <div className="bg-ghbackground rounded-lg p-4 max-h-48 overflow-y-auto mb-4">
               <p className="text-sm text-ghforegroundlow">
                 <strong className="text-white">Terms & Conditions:</strong>
                 <br />
-                By applying to become a coach, you agree to:
+                By applying to become a pilot or coach, you agree to:
                 <br />
                 • Provide quality coaching services as described
                 <br />

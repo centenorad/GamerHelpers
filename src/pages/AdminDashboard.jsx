@@ -1,5 +1,5 @@
 // React imports
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle,
   XCircle,
@@ -7,65 +7,70 @@ import {
   Users,
   FileText,
   BarChart3,
+  Loader,
+  AlertCircle,
 } from "lucide-react";
 
 // File imports
 import Header from "../templates/Header";
+import { AdminAPI, ApplicationsAPI } from "../services/api";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("applications");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Mock data
-  const pendingApplications = [
-    {
-      id: 1,
-      name: "Alex Pro",
-      game: "Valorant",
-      title: "Valorant Radiant Coaching",
-      description: "Professional Radiant coach with 5 years experience",
-      status: "pending",
-      submittedAt: "2024-01-12",
-    },
-    {
-      id: 2,
-      name: "Coach Lisa",
-      game: "League of Legends",
-      title: "League of Legends Jungle Coaching",
-      description: "Challenger tier jungle specialist",
-      status: "pending",
-      submittedAt: "2024-01-11",
-    },
-  ];
+  const [stats, setStats] = useState(null);
+  const [pendingApplications, setPendingApplications] = useState([]);
+  const [approvedCoaches, setApprovedCoaches] = useState([]);
+  const [serviceRequests, setServiceRequests] = useState([]);
 
-  const approvedCoaches = [
-    {
-      id: 3,
-      name: "Pilot Sam",
-      game: "Apex Legends",
-      title: "Apex Legends Pilot Service",
-      status: "approved",
-      joinedAt: "2024-01-01",
-    },
-  ];
+  // Fetch admin data
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const serviceRequests = [
-    {
-      id: 101,
-      user: "Player1",
-      coach: "Pilot Sam",
-      service: "Apex Legends Pilot Service",
-      status: "in-progress",
-      createdAt: "2024-01-13",
-    },
-    {
-      id: 102,
-      user: "Player2",
-      coach: "Alex Pro",
-      service: "Valorant Radiant Coaching",
-      status: "pending",
-      createdAt: "2024-01-13",
-    },
-  ];
+        // Fetch dashboard stats
+        const statsRes = await AdminAPI.getDashboard();
+        setStats(statsRes);
+
+        // Fetch pending applications
+        const appsRes = await ApplicationsAPI.getPendingApplications();
+        setPendingApplications(appsRes.applications || []);
+
+        // Fetch users (for approved coaches)
+        const usersRes = await AdminAPI.listUsers();
+        setApprovedCoaches(usersRes.users?.filter((u) => u.is_employee) || []);
+      } catch (err) {
+        console.error("Failed to fetch admin data:", err);
+        setError("Failed to load admin dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
+
+  const handleApprove = async (appId) => {
+    try {
+      await ApplicationsAPI.approveApplication(appId, "Application approved");
+      setPendingApplications((prev) => prev.filter((app) => app.id !== appId));
+    } catch (err) {
+      console.error("Failed to approve application:", err);
+    }
+  };
+
+  const handleReject = async (appId) => {
+    try {
+      await ApplicationsAPI.rejectApplication(appId, "Application rejected");
+      setPendingApplications((prev) => prev.filter((app) => app.id !== appId));
+    } catch (err) {
+      console.error("Failed to reject application:", err);
+    }
+  };
 
   return (
     <>
@@ -84,59 +89,72 @@ export default function AdminDashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {[
-              {
-                icon: FileText,
-                label: "Pending Applications",
-                value: pendingApplications.length,
-                color: "yellow",
-              },
-              {
-                icon: CheckCircle,
-                label: "Approved Coaches",
-                value: approvedCoaches.length,
-                color: "green",
-              },
-              {
-                icon: Clock,
-                label: "Active Services",
-                value: serviceRequests.filter((r) => r.status === "in-progress")
-                  .length,
-                color: "blue",
-              },
-              {
-                icon: Users,
-                label: "Total Coaches",
-                value: approvedCoaches.length + pendingApplications.length,
-                color: "purple",
-              },
-            ].map((stat, idx) => {
-              const Icon = stat.icon;
-              const colorClasses = {
-                yellow: "bg-yellow-900/20 border-yellow-500/50 text-yellow-400",
-                green: "bg-green-900/20 border-green-500/50 text-green-400",
-                blue: "bg-blue-900/20 border-blue-500/50 text-blue-400",
-                purple: "bg-purple-900/20 border-purple-500/50 text-purple-400",
-              };
-              return (
-                <div
-                  key={idx}
-                  className={`rounded-lg border p-6 ${
-                    colorClasses[stat.color]
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-ghforegroundlow mb-1">
-                        {stat.label}
-                      </p>
-                      <p className="text-3xl font-bold">{stat.value}</p>
+            {loading ? (
+              <div className="col-span-4 flex items-center justify-center gap-3 text-ghforegroundlow py-8">
+                <Loader size={24} className="animate-spin" />
+                <span>Loading dashboard...</span>
+              </div>
+            ) : error ? (
+              <div className="col-span-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-3 text-red-400">
+                <AlertCircle size={24} />
+                {error}
+              </div>
+            ) : (
+              [
+                {
+                  icon: FileText,
+                  label: "Pending Applications",
+                  value: stats?.pending_applications || 0,
+                  color: "yellow",
+                },
+                {
+                  icon: CheckCircle,
+                  label: "Total Coaches",
+                  value: stats?.stats?.total_coaches || 0,
+                  color: "green",
+                },
+                {
+                  icon: Clock,
+                  label: "Active Services",
+                  value: stats?.active_requests || 0,
+                  color: "blue",
+                },
+                {
+                  icon: Users,
+                  label: "Total Users",
+                  value: stats?.stats?.total_users || 0,
+                  color: "purple",
+                },
+              ].map((stat, idx) => {
+                const Icon = stat.icon;
+                const colorClasses = {
+                  yellow:
+                    "bg-yellow-900/20 border-yellow-500/50 text-yellow-400",
+                  green: "bg-green-900/20 border-green-500/50 text-green-400",
+                  blue: "bg-blue-900/20 border-blue-500/50 text-blue-400",
+                  purple:
+                    "bg-purple-900/20 border-purple-500/50 text-purple-400",
+                };
+                return (
+                  <div
+                    key={idx}
+                    className={`rounded-lg border p-6 ${
+                      colorClasses[stat.color]
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-ghforegroundlow mb-1">
+                          {stat.label}
+                        </p>
+                        <p className="text-3xl font-bold">{stat.value}</p>
+                      </div>
+                      <Icon size={32} />
                     </div>
-                    <Icon size={32} />
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Tabs */}
@@ -177,19 +195,25 @@ export default function AdminDashboard() {
                         {app.title}
                       </h3>
                       <p className="text-ghforegroundlow text-sm mb-2">
-                        by <strong>{app.name}</strong> • {app.game}
+                        by <strong>{app.full_name}</strong> • {app.game}
                       </p>
-                      <p className="text-ghforegroundlow">{app.description}</p>
                     </div>
                     <div className="text-sm text-ghforegroundlow mt-4 md:mt-0 md:text-right">
-                      Submitted: {app.submittedAt}
+                      Submitted:{" "}
+                      {new Date(app.submitted_at).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <button className="flex-1 md:flex-none px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleApprove(app.id)}
+                      className="flex-1 md:flex-none px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                    >
                       <CheckCircle size={18} /> Approve
                     </button>
-                    <button className="flex-1 md:flex-none px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleReject(app.id)}
+                      className="flex-1 md:flex-none px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                    >
                       <XCircle size={18} /> Reject
                     </button>
                   </div>

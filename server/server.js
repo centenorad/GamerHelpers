@@ -637,6 +637,109 @@ app.post("/api/applications", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/api/applications/my-applications", verifyToken, async (req, res) => {
+  const userId = req.userId;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const [apps] = await conn.execute(
+      `
+      SELECT 
+        sa.id, sa.user_id, sa.game_id, g.name as game,
+        sa.title, sa.description, sa.price, sa.status,
+        sa.submitted_at, sa.updated_at
+      FROM service_applications sa
+      JOIN games g ON sa.game_id = g.id
+      WHERE sa.user_id = ?
+      ORDER BY sa.submitted_at DESC
+    `,
+      [userId]
+    );
+
+    res.json({ applications: apps });
+  } catch (err) {
+    console.error("Get user applications error:", err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    if (conn) conn.end();
+  }
+});
+
+app.put("/api/applications/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, description, price } = req.body;
+  const userId = req.userId;
+
+  if (!title || !description || !price) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    // Check if user owns this application
+    const [appCheck] = await conn.execute(
+      "SELECT user_id FROM service_applications WHERE id = ?",
+      [id]
+    );
+
+    if (appCheck.length === 0 || appCheck[0].user_id !== userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    // Update application and set status back to pending
+    await conn.execute(
+      `UPDATE service_applications 
+       SET title = ?, description = ?, price = ?, status = 'pending', updated_at = NOW()
+       WHERE id = ?`,
+      [title, description, price, id]
+    );
+
+    res.json({
+      success: true,
+      message: "Application updated and pending reapproval",
+    });
+  } catch (err) {
+    console.error("Update application error:", err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    if (conn) conn.end();
+  }
+});
+
+app.post(
+  "/api/applications/pending",
+  verifyToken,
+  verifyAdmin,
+  async (req, res) => {
+    let conn;
+    try {
+      conn = await pool.getConnection();
+
+      const [apps] = await conn.execute(`
+      SELECT 
+        sa.id, sa.user_id, u.full_name, u.email, g.name as game,
+        sa.title, sa.price, sa.submitted_at,
+        DATEDIFF(NOW(), sa.submitted_at) as days_pending
+      FROM service_applications sa
+      JOIN users u ON sa.user_id = u.id
+      JOIN games g ON sa.game_id = g.id
+      WHERE sa.status = 'pending'
+      ORDER BY sa.submitted_at ASC
+    `);
+
+      res.json({ applications: apps });
+    } catch (err) {
+      console.error("Get pending applications error:", err);
+      res.status(500).json({ error: "Server error" });
+    } finally {
+      if (conn) conn.end();
+    }
+  }
+);
+
 app.get(
   "/api/applications/pending",
   verifyToken,
@@ -881,6 +984,67 @@ app.post("/api/requests", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/api/requests/employee/pending", verifyToken, async (req, res) => {
+  const employeeId = req.userId;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const [requests] = await conn.execute(
+      `SELECT 
+        sr.id, sr.published_service_id, sr.requester_user_id, sr.status,
+        sr.service_details, sr.amount, sr.created_at,
+        ps.title, ps.description,
+        u_req.full_name as requester_name, u_req.profile_picture,
+        g.name as game_name
+       FROM service_requests sr
+       JOIN published_services ps ON sr.published_service_id = ps.id
+       JOIN users u_req ON sr.requester_user_id = u_req.id
+       JOIN games g ON ps.game_id = g.id
+       WHERE sr.employee_user_id = ?
+       ORDER BY sr.created_at DESC`,
+      [employeeId]
+    );
+
+    res.json({ requests });
+  } catch (err) {
+    console.error("Get employee requests error:", err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    if (conn) conn.end();
+  }
+});
+
+app.get("/api/requests/user/my-requests", verifyToken, async (req, res) => {
+  const userId = req.userId;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const [requests] = await conn.execute(
+      `SELECT 
+        sr.id, sr.published_service_id, sr.status, sr.service_details, sr.amount, sr.created_at,
+        ps.title, ps.description, ps.employee_id,
+        u_emp.full_name as employee_name, u_emp.profile_picture,
+        g.name as game_name
+       FROM service_requests sr
+       JOIN published_services ps ON sr.published_service_id = ps.id
+       JOIN users u_emp ON ps.employee_id = u_emp.id
+       JOIN games g ON ps.game_id = g.id
+       WHERE sr.requester_user_id = ?
+       ORDER BY sr.created_at DESC`,
+      [userId]
+    );
+
+    res.json({ requests });
+  } catch (err) {
+    console.error("Get user requests error:", err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    if (conn) conn.end();
+  }
+});
+
 app.get("/api/requests/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   let conn;
@@ -986,6 +1150,45 @@ app.post("/api/requests/:id/complete", verifyToken, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Complete request error:", err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    if (conn) conn.end();
+  }
+});
+
+app.post("/api/requests/:id/cancel", verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    // Check if user is authorized (requester or employee)
+    const [requests] = await conn.execute(
+      "SELECT requester_user_id, employee_user_id FROM service_requests WHERE id = ?",
+      [id]
+    );
+
+    if (requests.length === 0) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const request = requests[0];
+    if (
+      req.userId !== request.requester_user_id &&
+      req.userId !== request.employee_user_id
+    ) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await conn.execute(
+      `UPDATE service_requests SET status = 'cancelled' WHERE id = ?`,
+      [id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Cancel request error:", err);
     res.status(500).json({ error: "Server error" });
   } finally {
     if (conn) conn.end();
