@@ -1,5 +1,5 @@
 // React imports
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Eye,
@@ -9,6 +9,7 @@ import {
   Lock,
   Loader,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 
 // File imports
@@ -20,24 +21,64 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [attemptsRemaining, setAttemptsRemaining] = useState(null);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (lockoutSeconds > 0) {
+      const timer = setInterval(() => {
+        setLockoutSeconds((prev) => {
+          if (prev <= 1) {
+            setError("");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [lockoutSeconds]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (lockoutSeconds > 0) return;
+
     setIsLoading(true);
     setError("");
+    setAttemptsRemaining(null);
 
     try {
       await login(email, password);
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err.message || "Login failed. Please try again.");
+      // Check if the error contains lockout information
+      if (err.locked) {
+        setLockoutSeconds(err.remainingSeconds || 300);
+        setError(err.message || "Account temporarily locked");
+        setAttemptsRemaining(null);
+      } else {
+        setError(err.message || "Login failed. Please try again.");
+        if (err.attemptsRemaining !== undefined) {
+          setAttemptsRemaining(err.attemptsRemaining);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  const isLocked = lockoutSeconds > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ghbackground via-ghbackground-secondary to-ghbackground flex items-center justify-center p-4">
@@ -124,9 +165,18 @@ export default function Login() {
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-2 text-red-400">
-                <AlertCircle size={20} />
-                {error}
+              <div
+                className={`mb-6 p-4 ${isLocked ? "bg-orange-500/20 border-orange-500/50" : "bg-red-500/20 border-red-500/50"} border rounded-lg flex items-center gap-2 ${isLocked ? "text-orange-400" : "text-red-400"}`}
+              >
+                {isLocked ? <Clock size={20} /> : <AlertCircle size={20} />}
+                <div className="flex-1">
+                  <p>{error}</p>
+                  {isLocked && (
+                    <p className="text-sm mt-1 font-mono">
+                      Try again in: {formatTime(lockoutSeconds)}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -150,12 +200,16 @@ export default function Login() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed mb-4 flex items-center justify-center gap-2"
+              disabled={isLoading || isLocked}
+              className={`w-full ${isLocked ? "bg-gray-600" : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"} text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg ${!isLocked && "hover:shadow-blue-500/50"} disabled:opacity-50 disabled:cursor-not-allowed mb-4 flex items-center justify-center gap-2`}
             >
               {isLoading ? (
                 <>
                   <Loader size={20} className="animate-spin" /> Signing in...
+                </>
+              ) : isLocked ? (
+                <>
+                  <Clock size={20} /> Locked ({formatTime(lockoutSeconds)})
                 </>
               ) : (
                 "Sign In"

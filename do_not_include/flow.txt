@@ -1,0 +1,32 @@
+Pilot and Coaches are labelled as "Employees"
+
+User being an employee:
+- User clicks "Apply" button
+- User fills up details for the post
+- User reads and agree to Terms and Conditions
+- User submits the application
+- Admin review the application
+- Admin approve or reject the application
+- User becomes an employee when approved
+- User can edit their post and admin must reapprove them
+
+User seeking for service
+- User browse for services
+- User sees a post
+- User clicks "Accept Service"
+- User writes details of the service
+- Employee gets notified by the upcoming service request, User waits for accept/decline
+- Chat will be opened for the user and employee, user will have to accept once more to start the service
+
+Service timeline
+- User and employee will chat, admins can see the chat
+- Employee can close the chat to declare service completion, admin will review the declaration of service completion
+- Admin can fully close the service when done or reopen if details are lacking
+- When fully closed, employees receive the money and chat gets archived
+
+
+
+home
+chat
+admin dashboard
+apply

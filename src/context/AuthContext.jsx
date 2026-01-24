@@ -54,6 +54,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const adminLogin = async (email, password) => {
+    try {
+      setError(null);
+      const response = await AuthAPI.adminLogin(email, password);
+      localStorage.setItem("token", response.token);
+      setUser(response.user);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -63,14 +76,23 @@ export const AuthProvider = ({ children }) => {
   // Determine user role
   const getRole = () => {
     if (!user) return null;
-    if (user.is_admin) return "admin";
+    if (user.is_admin === true || user.is_admin === "true") return "admin";
     if (user.is_employee) return "employee";
     return "user";
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, register, login, logout, role: getRole() }}
+      value={{
+        user,
+        loading,
+        error,
+        register,
+        login,
+        adminLogin,
+        logout,
+        role: getRole(),
+      }}
     >
       {children}
     </AuthContext.Provider>

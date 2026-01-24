@@ -20,8 +20,19 @@ const apiCall = async (endpoint, options = {}) => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "API Error");
+    const errorData = await response.json();
+    const error = new Error(errorData.error || "API Error");
+    // Attach additional lockout information if present
+    if (errorData.locked !== undefined) {
+      error.locked = errorData.locked;
+    }
+    if (errorData.remainingSeconds !== undefined) {
+      error.remainingSeconds = errorData.remainingSeconds;
+    }
+    if (errorData.attemptsRemaining !== undefined) {
+      error.attemptsRemaining = errorData.attemptsRemaining;
+    }
+    throw error;
   }
 
   return response.json();
@@ -44,6 +55,12 @@ export const AuthAPI = {
 
   login: (email, password) =>
     apiCall("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  adminLogin: (email, password) =>
+    apiCall("/auth/admin-login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
@@ -186,6 +203,11 @@ export const RequestsAPI = {
       body: JSON.stringify({ employee_response: employeeResponse }),
     }),
 
+  confirmRequest: (id) =>
+    apiCall(`/requests/${id}/confirm`, {
+      method: "POST",
+    }),
+
   rejectRequest: (id) =>
     apiCall(`/requests/${id}/reject`, {
       method: "POST",
@@ -259,6 +281,83 @@ export const AdminAPI = {
       method: "PUT",
       body: JSON.stringify({ account_status: status }),
     }),
+
+  // Service completion review
+  getPendingCompletions: () => apiCall("/admin/completions/pending"),
+
+  approveCompletion: (id, adminNotes) =>
+    apiCall(`/admin/completions/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ admin_notes: adminNotes }),
+    }),
+
+  reopenCompletion: (id, adminNotes) =>
+    apiCall(`/admin/completions/${id}/reopen`, {
+      method: "POST",
+      body: JSON.stringify({ admin_notes: adminNotes }),
+    }),
+
+  // Admin chat access
+  getAllChats: (status) => {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    return apiCall(`/admin/chats?${params}`);
+  },
+
+  getChatMessages: (chatId) => apiCall(`/admin/chats/${chatId}/messages`),
+
+  // Admin service requests
+  getAllRequests: (status) => {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    return apiCall(`/admin/requests?${params}`);
+  },
+
+  // Analytics
+  getAnalytics: () => apiCall("/admin/analytics"),
+
+  // Super admin - admin management
+  listAdmins: () => apiCall("/admin/admins"),
+
+  createAdmin: (userId, role = "regular") =>
+    apiCall("/admin/admins", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, role }),
+    }),
+
+  updateAdmin: (adminId, data) =>
+    apiCall(`/admin/admins/${adminId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  removeAdmin: (adminId) =>
+    apiCall(`/admin/admins/${adminId}`, {
+      method: "DELETE",
+    }),
+};
+
+// ==========================================
+// NOTIFICATIONS API
+// ==========================================
+export const NotificationsAPI = {
+  getNotifications: (unreadOnly = false) => {
+    const params = new URLSearchParams();
+    if (unreadOnly) params.append("unread_only", "true");
+    return apiCall(`/notifications?${params}`);
+  },
+
+  markAsRead: (id) =>
+    apiCall(`/notifications/${id}/read`, {
+      method: "POST",
+    }),
+
+  markAllAsRead: () =>
+    apiCall("/notifications/read-all", {
+      method: "POST",
+    }),
+
+  getUnreadCount: () => apiCall("/notifications/unread-count"),
 };
 
 // ==========================================
