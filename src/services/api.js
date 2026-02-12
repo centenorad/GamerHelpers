@@ -1,6 +1,7 @@
-// API Base URL
+// API Base URL — uses current hostname so it works across LAN devices
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+  import.meta.env.VITE_API_BASE_URL ||
+  `http://${window.location.hostname}:3000/api`;
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
