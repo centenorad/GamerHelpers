@@ -8,18 +8,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Restore user session on mount
+  // [SESSION MANAGEMENT] Restore user session on mount.
+  // Uses sessionStorage (tab-scoped) so sessions do NOT persist across tabs.
+  // Opening a new tab requires a fresh login, but refreshing keeps the session.
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (token) {
           const response = await AuthAPI.getCurrentUser();
           setUser(response.user);
         }
       } catch (err) {
         console.error("Failed to restore session:", err);
-        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
       } finally {
         setLoading(false);
       }
@@ -32,7 +34,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await AuthAPI.register(email, password, fullName);
-      localStorage.setItem("token", response.token);
+      // [SESSION MANAGEMENT] Store token in sessionStorage (tab-scoped, not shared across tabs)
+      sessionStorage.setItem("token", response.token);
       setUser(response.user);
       return response;
     } catch (err) {
@@ -45,7 +48,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await AuthAPI.login(email, password);
-      localStorage.setItem("token", response.token);
+      // [SESSION MANAGEMENT] Store token in sessionStorage (tab-scoped, not shared across tabs)
+      sessionStorage.setItem("token", response.token);
       setUser(response.user);
       return response;
     } catch (err) {
@@ -58,7 +62,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await AuthAPI.adminLogin(email, password);
-      localStorage.setItem("token", response.token);
+      // [SESSION MANAGEMENT] Store token in sessionStorage (tab-scoped, not shared across tabs)
+      sessionStorage.setItem("token", response.token);
       setUser(response.user);
       return response;
     } catch (err) {
@@ -67,8 +72,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
+    // [ADMIN AUDIT LOGS] If admin, log the logout action on the server
+    try {
+      const token = sessionStorage.getItem("token");
+      if (token && user?.is_admin) {
+        await AuthAPI.adminLogout();
+      }
+    } catch (err) {
+      // Ignore errors during logout logging
+    }
+    // [SESSION MANAGEMENT] Clear sessionStorage token on logout
+    sessionStorage.removeItem("token");
     setUser(null);
     setError(null);
   };

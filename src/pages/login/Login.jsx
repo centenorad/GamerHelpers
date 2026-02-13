@@ -1,5 +1,5 @@
 // React imports
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Eye,
@@ -9,7 +9,7 @@ import {
   Lock,
   Loader,
   AlertCircle,
-  Clock,
+  ShieldOff,
 } from "lucide-react";
 
 // File imports
@@ -22,37 +22,17 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [attemptsRemaining, setAttemptsRemaining] = useState(null);
-  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  // [ACCOUNT BLOCKING] Track if account is blocked (no timed lockout)
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // Countdown timer for lockout
-  useEffect(() => {
-    if (lockoutSeconds > 0) {
-      const timer = setInterval(() => {
-        setLockoutSeconds((prev) => {
-          if (prev <= 1) {
-            setError("");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [lockoutSeconds]);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (lockoutSeconds > 0) return;
+    // [ACCOUNT BLOCKING] Don't allow login attempts if blocked
+    if (isBlocked) return;
 
     setIsLoading(true);
     setError("");
@@ -62,10 +42,12 @@ export default function Login() {
       await login(email, password);
       navigate("/", { replace: true });
     } catch (err) {
-      // Check if the error contains lockout information
-      if (err.locked) {
-        setLockoutSeconds(err.remainingSeconds || 300);
-        setError(err.message || "Account temporarily locked");
+      // [ACCOUNT BLOCKING] Check if account is blocked (not timed lockout)
+      if (err.blocked) {
+        setIsBlocked(true);
+        setError(
+          err.message || "Account is blocked. Please contact an administrator.",
+        );
         setAttemptsRemaining(null);
       } else {
         setError(err.message || "Login failed. Please try again.");
@@ -77,8 +59,6 @@ export default function Login() {
       setIsLoading(false);
     }
   };
-
-  const isLocked = lockoutSeconds > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ghbackground via-ghbackground-secondary to-ghbackground flex items-center justify-center p-4">
@@ -164,16 +144,21 @@ export default function Login() {
             </div>
 
             {/* Error Message */}
+            {/* Error / Blocked Message */}
             {error && (
               <div
-                className={`mb-6 p-4 ${isLocked ? "bg-orange-500/20 border-orange-500/50" : "bg-red-500/20 border-red-500/50"} border rounded-lg flex items-center gap-2 ${isLocked ? "text-orange-400" : "text-red-400"}`}
+                className={`mb-6 p-4 ${isBlocked ? "bg-orange-500/20 border-orange-500/50" : "bg-red-500/20 border-red-500/50"} border rounded-lg flex items-center gap-2 ${isBlocked ? "text-orange-400" : "text-red-400"}`}
               >
-                {isLocked ? <Clock size={20} /> : <AlertCircle size={20} />}
+                {isBlocked ? (
+                  <ShieldOff size={20} />
+                ) : (
+                  <AlertCircle size={20} />
+                )}
                 <div className="flex-1">
                   <p>{error}</p>
-                  {isLocked && (
-                    <p className="text-sm mt-1 font-mono">
-                      Try again in: {formatTime(lockoutSeconds)}
+                  {isBlocked && (
+                    <p className="text-sm mt-1">
+                      Contact an administrator to unblock your account.
                     </p>
                   )}
                 </div>
@@ -200,16 +185,16 @@ export default function Login() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || isLocked}
-              className={`w-full ${isLocked ? "bg-gray-600" : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"} text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg ${!isLocked && "hover:shadow-blue-500/50"} disabled:opacity-50 disabled:cursor-not-allowed mb-4 flex items-center justify-center gap-2`}
+              disabled={isLoading || isBlocked}
+              className={`w-full ${isBlocked ? "bg-gray-600" : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"} text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg ${!isBlocked && "hover:shadow-blue-500/50"} disabled:opacity-50 disabled:cursor-not-allowed mb-4 flex items-center justify-center gap-2`}
             >
               {isLoading ? (
                 <>
                   <Loader size={20} className="animate-spin" /> Signing in...
                 </>
-              ) : isLocked ? (
+              ) : isBlocked ? (
                 <>
-                  <Clock size={20} /> Locked ({formatTime(lockoutSeconds)})
+                  <ShieldOff size={20} /> Account Blocked
                 </>
               ) : (
                 "Sign In"

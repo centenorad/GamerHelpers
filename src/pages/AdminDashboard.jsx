@@ -23,6 +23,10 @@ import {
   UserMinus,
   TrendingUp,
   Activity,
+  UserCheck,
+  Ban,
+  Unlock,
+  Search,
 } from "lucide-react";
 import {
   LineChart,
@@ -134,31 +138,64 @@ const CHART_COLORS = [
 ];
 
 // Analytics Charts Component
-const AnalyticsCharts = ({ analytics }) => {
-  if (!analytics) return null;
+const AnalyticsCharts = ({ analytics, range, onRangeChange, loading }) => {
+  if (!analytics && !loading) return null;
 
-  // Format daily data for charts
+  const rangeOptions = [
+    { value: 7, label: "7 Days" },
+    { value: 30, label: "30 Days" },
+    { value: 365, label: "1 Year" },
+  ];
+
+  // Format daily data for charts based on range
   const formatDailyData = (data, valueKey = "count") => {
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
+    const days = range;
+    const result = [];
+
+    // For large ranges, only show data points that exist (no zero-fill)
+    if (days > 30) {
+      return (
+        data?.map((d) => {
+          const date = new Date(d.date);
+          return {
+            name: date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
+            value: Number(d[valueKey] || d.count || 0),
+            revenue: Number(d.revenue || 0),
+            commission: Number(d.commission || 0),
+          };
+        }) || []
+      );
+    }
+
+    // For 7 and 30 day ranges, fill in missing dates with zeros
+    for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
-      const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+      const label =
+        days <= 7
+          ? date.toLocaleDateString("en-US", { weekday: "short" })
+          : date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
       const found = data?.find((d) => d.date?.split("T")[0] === dateStr);
-      last7Days.push({
-        name: dayName,
+      result.push({
+        name: label,
         value: found ? Number(found[valueKey] || found.count || 0) : 0,
         revenue: found ? Number(found.revenue || 0) : 0,
         commission: found ? Number(found.commission || 0) : 0,
       });
     }
-    return last7Days;
+    return result;
   };
 
-  const dailyRequestsData = formatDailyData(analytics.dailyRequests);
-  const dailyRevenueData = formatDailyData(analytics.dailyRevenue, "revenue");
-  const dailyUsersData = formatDailyData(analytics.dailyUsers);
+  const dailyRequestsData = formatDailyData(analytics?.dailyRequests);
+  const dailyRevenueData = formatDailyData(analytics?.dailyRevenue, "revenue");
+  const dailyUsersData = formatDailyData(analytics?.dailyUsers);
 
   // Format status distribution for pie chart
   const statusData =
@@ -179,204 +216,249 @@ const AnalyticsCharts = ({ analytics }) => {
       requests: Number(game.requests || 0),
     })) || [];
 
+  const rangeLabel =
+    range === 7 ? "Last 7 Days" : range === 30 ? "Last 30 Days" : "Last Year";
+
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Row 1: Line Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Daily Service Requests */}
-        <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
-          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-ghaccent" />
-            Daily Service Requests (Last 7 Days)
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={dailyRequestsData}>
-              <defs>
-                <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
-              <YAxis stroke="#6b7280" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#111633",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "#fff" }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#3b82f6"
-                fill="url(#colorRequests)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Daily Revenue */}
-        <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
-          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <DollarSign size={18} className="text-green-400" />
-            Daily Revenue (Last 7 Days)
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={dailyRevenueData}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
-              <YAxis
-                stroke="#6b7280"
-                fontSize={12}
-                tickFormatter={(v) => `$${v}`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#111633",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "#fff" }}
-                formatter={(value) => [
-                  `$${Number(value).toFixed(2)}`,
-                  "Revenue",
-                ]}
-              />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#10b981"
-                fill="url(#colorRevenue)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Range Toggle Buttons */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-white font-bold text-lg">Analytics Overview</h2>
+        <div className="flex items-center gap-1 bg-ghbackground rounded-lg p-1 border border-ghforegroundlow/20">
+          {rangeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onRangeChange(opt.value)}
+              disabled={loading}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                range === opt.value
+                  ? "bg-ghaccent text-white shadow-lg"
+                  : "text-ghforegroundlow hover:text-white hover:bg-ghbackground-secondary"
+              } disabled:opacity-50`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Row 2: Bar Chart and Pie Chart */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top Games */}
-        <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
-          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <Gamepad2 size={18} className="text-purple-400" />
-            Top Games by Activity
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={topGamesData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis type="number" stroke="#6b7280" fontSize={12} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                stroke="#6b7280"
-                fontSize={11}
-                width={80}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#111633",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "#fff" }}
-              />
-              <Legend />
-              <Bar
-                dataKey="services"
-                fill="#8b5cf6"
-                name="Services"
-                radius={[0, 4, 4, 0]}
-              />
-              <Bar
-                dataKey="requests"
-                fill="#3b82f6"
-                name="Requests"
-                radius={[0, 4, 4, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 text-ghforegroundlow py-16">
+          <Loader size={24} className="animate-spin" />
+          <span>Loading analytics...</span>
         </div>
-
-        {/* Status Distribution */}
-        <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
-          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <TrendingUp size={18} className="text-orange-400" />
-            Service Status Distribution
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={2}
-                dataKey="value"
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                labelLine={false}
-              >
-                {statusData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+      ) : (
+        <>
+          {/* Row 1: Line Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Daily Service Requests */}
+            <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <Activity size={18} className="text-ghaccent" />
+                Service Requests ({rangeLabel})
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={dailyRequestsData}>
+                  <defs>
+                    <linearGradient
+                      id="colorRequests"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111633",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                    }}
+                    labelStyle={{ color: "#fff" }}
                   />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#111633",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#3b82f6"
+                    fill="url(#colorRequests)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
 
-      {/* Row 3: New Users */}
-      <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
-        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-          <Users size={18} className="text-blue-400" />
-          New User Registrations (Last 7 Days)
-        </h3>
-        <ResponsiveContainer width="100%" height={150}>
-          <LineChart data={dailyUsersData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
-            <YAxis stroke="#6b7280" fontSize={12} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#111633",
-                border: "1px solid #374151",
-                borderRadius: "8px",
-              }}
-              labelStyle={{ color: "#fff" }}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              dot={{ fill: "#3b82f6" }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+            {/* Daily Revenue */}
+            <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <DollarSign size={18} className="text-green-400" />
+                Revenue ({rangeLabel})
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={dailyRevenueData}>
+                  <defs>
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis
+                    stroke="#6b7280"
+                    fontSize={12}
+                    tickFormatter={(v) => `$${v}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111633",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                    }}
+                    labelStyle={{ color: "#fff" }}
+                    formatter={(value) => [
+                      `$${Number(value).toFixed(2)}`,
+                      "Revenue",
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10b981"
+                    fill="url(#colorRevenue)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Row 2: Bar Chart and Pie Chart */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Top Games */}
+            <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <Gamepad2 size={18} className="text-purple-400" />
+                Top Games by Activity
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={topGamesData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    stroke="#6b7280"
+                    fontSize={11}
+                    width={80}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111633",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                    }}
+                    labelStyle={{ color: "#fff" }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="services"
+                    fill="#8b5cf6"
+                    name="Services"
+                    radius={[0, 4, 4, 0]}
+                  />
+                  <Bar
+                    dataKey="requests"
+                    fill="#3b82f6"
+                    name="Requests"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Status Distribution */}
+            <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <TrendingUp size={18} className="text-orange-400" />
+                Service Status Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    labelLine={false}
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111633",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Row 3: New Users */}
+          <div className="bg-ghbackground-secondary rounded-xl border border-ghforegroundlow/20 p-6">
+            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+              <Users size={18} className="text-blue-400" />
+              New User Registrations ({rangeLabel})
+            </h3>
+            <ResponsiveContainer width="100%" height={150}>
+              <LineChart data={dailyUsersData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                <YAxis stroke="#6b7280" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#111633",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                  }}
+                  labelStyle={{ color: "#fff" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ fill: "#3b82f6" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -900,6 +982,233 @@ const ChatMessagesModal = ({ chat, messages, onClose }) => {
   );
 };
 
+// ==========================================
+// Users Table Component — Shows all users with status and actions
+// ==========================================
+const UsersTable = ({ users, onUpdateStatus }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [processing, setProcessing] = useState(null);
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || user.account_status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleAction = async (userId, action) => {
+    setProcessing(userId);
+    await onUpdateStatus(userId, action);
+    setProcessing(null);
+  };
+
+  const getStatusBadge = (status) => {
+    const config = {
+      active: {
+        bg: "bg-green-500/20",
+        border: "border-green-500/50",
+        text: "text-green-400",
+        label: "Active",
+      },
+      blocked: {
+        bg: "bg-red-500/20",
+        border: "border-red-500/50",
+        text: "text-red-400",
+        label: "Blocked",
+      },
+      suspended: {
+        bg: "bg-yellow-500/20",
+        border: "border-yellow-500/50",
+        text: "text-yellow-400",
+        label: "Suspended",
+      },
+      banned: {
+        bg: "bg-red-500/20",
+        border: "border-red-500/50",
+        text: "text-red-400",
+        label: "Banned",
+      },
+    };
+    const c = config[status] || config.active;
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-semibold ${c.bg} border ${c.border} ${c.text}`}
+      >
+        {c.label}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ghforegroundlow"
+          />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-ghbackground border border-ghforegroundlow/30 rounded-lg text-white placeholder-ghforegroundlow focus:outline-none focus:border-ghaccent"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 bg-ghbackground border border-ghforegroundlow/30 rounded-lg text-white focus:outline-none focus:border-ghaccent"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="blocked">Blocked</option>
+          <option value="suspended">Suspended</option>
+          <option value="banned">Banned</option>
+        </select>
+      </div>
+
+      {/* Users Count */}
+      <p className="text-ghforegroundlow text-sm">
+        Showing {filteredUsers.length} of {users.length} users
+      </p>
+
+      {/* Users Table */}
+      {filteredUsers.length === 0 ? (
+        <div className="text-center py-16 text-ghforegroundlow">
+          <Users size={48} className="mx-auto mb-4 opacity-30" />
+          <p className="text-lg">No users found</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-ghforegroundlow/20">
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold">
+                  User
+                </th>
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold">
+                  Role
+                </th>
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold">
+                  Status
+                </th>
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold">
+                  Wallet
+                </th>
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold">
+                  Joined
+                </th>
+                <th className="pb-3 text-ghforegroundlow text-sm font-semibold text-right">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ghforegroundlow/10">
+              {filteredUsers.map((u) => (
+                <tr
+                  key={u.id}
+                  className="hover:bg-ghbackground-secondary/50 transition-colors"
+                >
+                  <td className="py-4">
+                    <div>
+                      <p className="text-white font-semibold">{u.full_name}</p>
+                      <p className="text-ghforegroundlow text-sm">{u.email}</p>
+                    </div>
+                  </td>
+                  <td className="py-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        u.is_employee
+                          ? "bg-blue-500/20 border border-blue-500/50 text-blue-400"
+                          : "bg-gray-500/20 border border-gray-500/50 text-gray-400"
+                      }`}
+                    >
+                      {u.is_employee ? "Employee" : "User"}
+                    </span>
+                  </td>
+                  <td className="py-4">{getStatusBadge(u.account_status)}</td>
+                  <td className="py-4">
+                    <span className="text-green-400 font-semibold flex items-center gap-1">
+                      <DollarSign size={14} />
+                      {Number(u.wallet_balance || 0).toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="py-4 text-ghforegroundlow text-sm">
+                    {new Date(u.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="py-4">
+                    <div className="flex items-center gap-2 justify-end">
+                      {u.account_status === "blocked" ? (
+                        <button
+                          onClick={() => handleAction(u.id, "unblock")}
+                          disabled={processing === u.id}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                        >
+                          {processing === u.id ? (
+                            <Loader size={12} className="animate-spin" />
+                          ) : (
+                            <Unlock size={12} />
+                          )}
+                          Unblock
+                        </button>
+                      ) : u.account_status === "active" ? (
+                        <>
+                          <button
+                            onClick={() => handleAction(u.id, "suspended")}
+                            disabled={processing === u.id}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50"
+                          >
+                            {processing === u.id ? (
+                              <Loader size={12} className="animate-spin" />
+                            ) : (
+                              <Ban size={12} />
+                            )}
+                            Suspend
+                          </button>
+                          <button
+                            onClick={() => handleAction(u.id, "banned")}
+                            disabled={processing === u.id}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                          >
+                            {processing === u.id ? (
+                              <Loader size={12} className="animate-spin" />
+                            ) : (
+                              <Ban size={12} />
+                            )}
+                            Ban
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleAction(u.id, "active")}
+                          disabled={processing === u.id}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                        >
+                          {processing === u.id ? (
+                            <Loader size={12} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={12} />
+                          )}
+                          Activate
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("analytics");
@@ -908,6 +1217,8 @@ export default function AdminDashboard() {
 
   const [stats, setStats] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [analyticsRange, setAnalyticsRange] = useState(7);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [pendingApplications, setPendingApplications] = useState([]);
   const [pendingCompletions, setPendingCompletions] = useState([]);
   const [allChats, setAllChats] = useState([]);
@@ -943,7 +1254,7 @@ export default function AdminDashboard() {
           usersRes,
         ] = await Promise.all([
           AdminAPI.getDashboard().catch(() => ({})),
-          AdminAPI.getAnalytics().catch(() => null),
+          AdminAPI.getAnalytics(7).catch(() => null),
           ApplicationsAPI.getPendingApplications().catch(() => ({
             applications: [],
           })),
@@ -991,6 +1302,20 @@ export default function AdminDashboard() {
       fetchAdmins();
     }
   }, [activeTab, isSuperAdmin]);
+
+  // Handle analytics range change
+  const handleAnalyticsRangeChange = async (newRange) => {
+    setAnalyticsRange(newRange);
+    setAnalyticsLoading(true);
+    try {
+      const res = await AdminAPI.getAnalytics(newRange);
+      setAnalytics(res);
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const handleApproveApp = async (appId) => {
     try {
@@ -1078,6 +1403,33 @@ export default function AdminDashboard() {
     }
   };
 
+  // Update user status (block/unblock/suspend/activate)
+  const handleUpdateUserStatus = async (userId, newStatus) => {
+    try {
+      if (newStatus === "unblock") {
+        await AdminAPI.unblockUser(userId);
+        // Update local state
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, account_status: "active", failed_login_attempts: 0 }
+              : u,
+          ),
+        );
+      } else {
+        await AdminAPI.updateUserStatus(userId, newStatus);
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, account_status: newStatus } : u,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update user status:", err);
+      alert(err.message || "Failed to update user status");
+    }
+  };
+
   const tabs = [
     { id: "analytics", label: "Analytics", icon: TrendingUp },
     {
@@ -1103,6 +1455,12 @@ export default function AdminDashboard() {
       label: "Service Requests",
       icon: BarChart3,
       count: allRequests.length,
+    },
+    {
+      id: "users",
+      label: "All Users",
+      icon: UserCheck,
+      count: allUsers.length,
     },
     {
       id: "employees",
@@ -1245,7 +1603,12 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {/* Analytics Tab */}
             {activeTab === "analytics" && (
-              <AnalyticsCharts analytics={analytics} />
+              <AnalyticsCharts
+                analytics={analytics}
+                range={analyticsRange}
+                onRangeChange={handleAnalyticsRangeChange}
+                loading={analyticsLoading}
+              />
             )}
 
             {/* Pending Completions */}
@@ -1413,6 +1776,13 @@ export default function AdminDashboard() {
             )}
 
             {/* Employees */}
+            {activeTab === "users" && (
+              <UsersTable
+                users={allUsers}
+                onUpdateStatus={handleUpdateUserStatus}
+              />
+            )}
+
             {activeTab === "employees" && (
               <>
                 {approvedEmployees.length === 0 ? (

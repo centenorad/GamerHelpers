@@ -5,7 +5,8 @@ const API_BASE_URL =
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem("token");
+  // [SESSION MANAGEMENT] Read token from sessionStorage (tab-scoped)
+  const token = sessionStorage.getItem("token");
   const headers = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -23,9 +24,12 @@ const apiCall = async (endpoint, options = {}) => {
   if (!response.ok) {
     const errorData = await response.json();
     const error = new Error(errorData.error || "API Error");
-    // Attach additional lockout information if present
+    // Attach additional lockout/blocking information if present
     if (errorData.locked !== undefined) {
       error.locked = errorData.locked;
+    }
+    if (errorData.blocked !== undefined) {
+      error.blocked = errorData.blocked;
     }
     if (errorData.remainingSeconds !== undefined) {
       error.remainingSeconds = errorData.remainingSeconds;
@@ -65,6 +69,9 @@ export const AuthAPI = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+
+  // [ADMIN AUDIT LOGS] Log admin logout on the server
+  adminLogout: () => apiCall("/auth/admin-logout", { method: "POST" }),
 
   refreshToken: () => apiCall("/auth/refresh", { method: "POST" }),
 
@@ -283,6 +290,29 @@ export const AdminAPI = {
       body: JSON.stringify({ account_status: status }),
     }),
 
+  // [ACCOUNT BLOCKING] Unblock a user account
+  unblockUser: (userId) =>
+    apiCall(`/admin/users/${userId}/unblock`, {
+      method: "PUT",
+    }),
+
+  // [ACCOUNT BLOCKING] Unblock an admin account
+  unblockAdmin: (adminId) =>
+    apiCall(`/admin/admins/${adminId}/unblock`, {
+      method: "PUT",
+    }),
+
+  // [ACCOUNT BLOCKING] Get all blocked users and admins
+  getBlockedUsers: () => apiCall("/admin/users/blocked"),
+
+  // [ADMIN AUDIT LOGS] Get admin action logs
+  getAdminLogs: (limit = 50, offset = 0) => {
+    const params = new URLSearchParams();
+    params.append("limit", limit);
+    params.append("offset", offset);
+    return apiCall(`/admin/logs?${params}`);
+  },
+
   // Service completion review
   getPendingCompletions: () => apiCall("/admin/completions/pending"),
 
@@ -314,8 +344,12 @@ export const AdminAPI = {
     return apiCall(`/admin/requests?${params}`);
   },
 
-  // Analytics
-  getAnalytics: () => apiCall("/admin/analytics"),
+  // Analytics (range: 7, 30, or 365 days)
+  getAnalytics: (range = 7) => {
+    const params = new URLSearchParams();
+    params.append("range", range);
+    return apiCall(`/admin/analytics?${params}`);
+  },
 
   // Super admin - admin management
   listAdmins: () => apiCall("/admin/admins"),

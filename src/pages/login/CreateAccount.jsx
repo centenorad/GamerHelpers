@@ -57,8 +57,21 @@ export default function CreateAccount() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    // [PASSWORD POLICY] Password must be 8–12 characters
+    if (formData.password.length < 8 || formData.password.length > 12) {
+      setError("Password must be 8–12 characters long");
+      return;
+    }
+
+    // [INPUT VALIDATION] Full name must not exceed 100 characters
+    if (formData.fullName.trim().length > 100) {
+      setError("Full name must not exceed 100 characters");
+      return;
+    }
+
+    // [INPUT VALIDATION] Email must not exceed 100 characters
+    if (formData.email.trim().length > 100) {
+      setError("Email must not exceed 100 characters");
       return;
     }
 
